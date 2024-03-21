@@ -9,7 +9,7 @@ repositories {
     jcenter()
 }
 
-implementation 'org.tron:tronlink-core:1.2@aar'
+implementation 'org.tronlink:tronlink-android-core:1.0.0@aar'
 ```
 
 ## Demo

@@ -1,15 +1,15 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.google.protobuf'
 apply plugin: 'maven-publish'
-group = 'com.github.TronLink'
+group = 'org.tronlink'
 
 android {
     compileSdkVersion 33
     defaultConfig {
         minSdkVersion 21
         targetSdkVersion 33
-        versionCode 3
-        versionName "1.0.2"
+        versionCode 1
+        versionName "1.0.0"
         multiDexEnabled true
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -115,8 +115,8 @@ afterEvaluate {
             // Creates a Maven publication called "release".
             release(MavenPublication) {
                 from components.release
-                groupId = 'org.tron'
-                artifactId = 'tronlink-core'
+                groupId = 'org.tronlink'
+                artifactId = 'tronlink-android-core'
                 version = "${android.defaultConfig.versionName}"
             }
         }
