@@ -8,7 +8,6 @@
 /build
 /captures
 .externalNativeBuild
-/gradle.properties
 *.idea
 *.apk
 reporter/*
