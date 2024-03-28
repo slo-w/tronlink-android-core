@@ -14,6 +14,6 @@ implementation 'com.github.TronLink:tronlink-android-core:1.0.0@aar'
 
 ## Demo
 
-- [Create new wallet](./core/src/test/java)
-- [Sign transaction](./core/src/test/java)
-- [Sign message](./core/src/test/java)
+- [Create new wallet](./core/src/test/java/org/tron/WalletCoreUnitTest.java)
+- [Sign transaction](./core/src/test/java/org/tron/TransactionCoreUnitTest.java)
+- [Sign message](./core/src/test/java/org/tron/TransactionCoreUnitTest.java)
