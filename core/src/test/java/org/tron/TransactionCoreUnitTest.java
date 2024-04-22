@@ -9,7 +9,6 @@ import org.tron.api.GrpcAPI;
 import org.tron.api.WalletGrpc;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.ByteUtil;
-import org.tron.common.utils.LogUtils;
 import org.tron.common.utils.TransactionDataUtils;
 import org.tron.common.utils.TransactionUtils;
 import org.tron.common.utils.abi.AbiUtil;
@@ -20,12 +19,9 @@ import org.tron.protos.contract.AssetIssueContractOuterClass;
 import org.tron.protos.contract.BalanceContract;
 import org.tron.protos.contract.SmartContractOuterClass;
 import org.tron.walletserver.AddressUtil;
-import org.tron.walletserver.ConnectErrorException;
 import org.tron.walletserver.I_TYPE;
 import org.tron.walletserver.Wallet;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.TimeUnit;
 
 import io.grpc.ManagedChannel;
@@ -37,11 +33,11 @@ public class TransactionCoreUnitTest {
     String tgtIp = "grpc.trongrid.io:50051";
 
     private static final String WALLET_NAME = "walletTest";
-    private static final String PRIVETE_KEY = "8e0de1652bb518de63f8a1b8b6d3ad195c069024abe59e4b31fc8a70e124879a";
-    private static final String WALLET_ADDRESS_TO = "TDqGdq76PDHrEXfEPMmNa2ayc7E4PKzfS1";
-    private static final String WALLET_ADDRESS = "TTjjGfE7xC3FLECERoKuokGRHj4STjF1q4";
-    private static final String TOKEN_ID = "1004114";
-    private static final String CONTRACT_ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+    private static final String PRIVATE_KEY = "";
+    private static final String WALLET_ADDRESS = "";
+    private static final String WALLET_ADDRESS_TO = "";
+    private static final String TOKEN_ID = "1004114";//you can use your any test tokenid of any trc10 token
+    private static final String CONTRACT_ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";//you can use your any test contract address of any trc20 token
 
     private static final long AMOUNT = 1000000l;
 
@@ -51,8 +47,11 @@ public class TransactionCoreUnitTest {
     private WalletGrpc.WalletBlockingStub stub;
 
     @Test
-    public void importWalletWithPrivateKey() {
-        testWallet = new Wallet(I_TYPE.PRIVATE, PRIVETE_KEY);
+    public void importWalletWithPrivateKey() throws Exception {
+        if ("".equals(PRIVATE_KEY)) {
+            throw new Exception("You must assign values to the parameter called PRIVATE_KEY to make sure you can run");
+        }
+        testWallet = new Wallet(I_TYPE.PRIVATE, PRIVATE_KEY);
         testWallet.setWalletName(WALLET_NAME);
         testWallet.setCreateType(Parameter.CreateWalletType.TYPE_IMPORT_PRIKEY);
         testWallet.setCreateTime(System.currentTimeMillis());
@@ -60,12 +59,16 @@ public class TransactionCoreUnitTest {
     }
 
     @Test
-    public void connectNode() {
+    public void connectNode() throws Exception {
         importWalletWithPrivateKey();
         channel = ManagedChannelBuilder.forTarget(tgtIp)
                 .usePlaintext()
                 .build();
         stub = WalletGrpc.newBlockingStub(channel);
+        if ("".equals(WALLET_ADDRESS)) {
+            throw new Exception("You must assign values to the parameter called " +
+                    "WALLET_ADDRESS to make sure you can run");
+        }
         ByteString addressBS = ByteString.copyFrom(AddressUtil.decode58Check(WALLET_ADDRESS));
         Protocol.Account request = Protocol.Account.newBuilder().setAddress(addressBS).build();
         Protocol.Account account = stub.withDeadlineAfter(10, TimeUnit.SECONDS).getAccount(request);
@@ -76,28 +79,28 @@ public class TransactionCoreUnitTest {
     }
 
     @Test
-    public void trxTransactionTransactionTest() {
+    public void trxTransactionTransactionTest() throws Exception {
         initBlockStub();
         Protocol.Transaction transaction = createTrxTransferTransaction(WALLET_ADDRESS, WALLET_ADDRESS_TO, AMOUNT);
         Assert.assertNotNull(transaction);
     }
 
     @Test
-    public void trc20TransactionTransactionTest() {
+    public void trc20TransactionTransactionTest() throws Exception {
         initBlockStub();
         Protocol.Transaction transaction = createTrc20TransferTransaction(WALLET_ADDRESS, WALLET_ADDRESS_TO, CONTRACT_ADDRESS);
         Assert.assertNotNull(transaction);
     }
 
     @Test
-    public void trc10TransctionTransactionTest() {
+    public void trc10TransctionTransactionTest() throws Exception {
         initBlockStub();
         Protocol.Transaction transaction = createTrc10TransferTransaction(WALLET_ADDRESS, WALLET_ADDRESS_TO, TOKEN_ID, AMOUNT);
         Assert.assertNotNull(transaction);
     }
 
     @Test
-    public void signTest() {
+    public void signTest() throws Exception {
         importWalletWithPrivateKey();
         initBlockStub();
         Protocol.Transaction transactionSigned = sign(createTrxTransferTransaction(WALLET_ADDRESS, WALLET_ADDRESS_TO, AMOUNT));
@@ -105,7 +108,7 @@ public class TransactionCoreUnitTest {
     }
 
     @Test
-    public void broadcastTransactionTest() {
+    public void broadcastTransactionTest() throws Exception {
         boolean sent;
         importWalletWithPrivateKey();
         initBlockStub();
@@ -143,7 +146,11 @@ public class TransactionCoreUnitTest {
         stub = WalletGrpc.newBlockingStub(channel);
     }
 
-    public Protocol.Transaction createTrxTransferTransaction(String ownerAddress, String toAddress, long amount) {
+    public Protocol.Transaction createTrxTransferTransaction(String ownerAddress, String toAddress, long amount) throws Exception {
+        if ("".equals(ownerAddress) || "".equals(toAddress)) {
+            throw new Exception("You must assign values to the parameters called " +
+                    "WALLET_ADDRESS , WALLET_ADDRESS_TO and CONTRACT_ADDRESS, to make sure you can run");
+        }
         channel = ManagedChannelBuilder.forTarget(tgtIp)
                 .usePlaintext()
                 .build();
@@ -168,7 +175,11 @@ public class TransactionCoreUnitTest {
         return transaction;
     }
 
-    public Protocol.Transaction createTrc10TransferTransaction(String ownerAddress, String toAddress, String tokenIdStr, long amount) {
+    public Protocol.Transaction createTrc10TransferTransaction(String ownerAddress, String toAddress, String tokenIdStr, long amount) throws Exception {
+        if ("".equals(ownerAddress) || "".equals(toAddress) || "".equals(tokenIdStr)) {
+            throw new Exception("You must assign values to the parameters called " +
+                    "WALLET_ADDRESS , WALLET_ADDRESS_TO and TOKEN_ID, to make sure you can run");
+        }
         channel = ManagedChannelBuilder.forTarget(tgtIp)
                 .usePlaintext()
                 .build();
@@ -199,7 +210,11 @@ public class TransactionCoreUnitTest {
 
     }
 
-    public Protocol.Transaction createTrc20TransferTransaction(String ownerAddress, String toAddress, String contractAddress) {
+    public Protocol.Transaction createTrc20TransferTransaction(String ownerAddress, String toAddress, String contractAddress) throws Exception {
+        if ("".equals(ownerAddress) || "".equals(toAddress) || "".equals(contractAddress)) {
+            throw new Exception("You must assign values to the parameters called " +
+                    "WALLET_ADDRESS , WALLET_ADDRESS_TO and CONTRACT_ADDRESS, to make sure you can run");
+        }
         //trx20
         TriggerContractRequest triggerContractRequest = new TriggerContractRequest();
         String methodStr = TransactionDataUtils.transferMethod;
