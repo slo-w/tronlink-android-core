@@ -472,6 +472,17 @@ public class AbiUtil {
 
         return pack(coders, items);
     }
+    public static byte[] encodeInputFromList(String methodSign, List<Object> input) {
+
+        if (input == null || input.size() == 0) return null;
+        List items = input;
+        List<Coder> coders = new ArrayList<>();
+        for (String s : getTypes(methodSign)) {
+            Coder c = getParamCoder(s);
+            coders.add(c);
+        }
+        return pack(coders, items);
+    }
 
     //This method will have the problem of gson analysis of science and technology law
     //"[a,1111111111222222222223333333333]"this kind of data will throw error
@@ -479,7 +490,7 @@ public class AbiUtil {
         input = "[" + input + "]";
         List items = new ArrayList<>();
         try {
-            items = GsonFormatUtils.gsonToList(input, List.class);
+            items = GsonFormatUtils.gsonToListFixDouble(input, List.class);
             return items;
         } catch (Exception e) {
             LogUtils.e(e);
