@@ -14,7 +14,7 @@ maven { url "https://jitpack.io"  }
 ```
 Add dependency.
 ```
-implementation 'com.github.TronLink:tronlink-android-core:1.0.0@aar'
+implementation 'com.github.TronLink:tronlink-android-core:1.0.2@aar'
 ```
 
 ## Demo
