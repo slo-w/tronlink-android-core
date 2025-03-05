@@ -39,16 +39,16 @@ android {
 
 protobuf {
     protoc {
-//        artifact = 'com.google.protobuf:protoc:3.5.1-1'
-         artifact = 'com.google.protobuf:protoc:3.5.1-1:osx-x86_64'
+        artifact = 'com.google.protobuf:protoc:3.5.1-1'
+//         artifact = 'com.google.protobuf:protoc:3.5.1-1:osx-x86_64'
     }
     plugins {
 //        javalite {
 //            artifact = "com.google.protobuf:protoc-gen-javalite:3.0.0"
 //        }
         grpc {
-//            artifact = 'io.grpc:protoc-gen-grpc-java:1.9.0'
-            artifact = 'io.grpc:protoc-gen-grpc-java:1.9.0:osx-x86_64'
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.9.0'
+//            artifact = 'io.grpc:protoc-gen-grpc-java:1.9.0:osx-x86_64'
         }
     }
     generateProtoTasks {
