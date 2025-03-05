@@ -11,6 +11,7 @@ import com.alibaba.fastjson.JSON;
 import com.google.protobuf.ByteString;
 
 import org.bouncycastle.util.encoders.Hex;
+import org.tron.core.example.R;
 import org.tron.api.GrpcAPI;
 import org.tron.api.WalletGrpc;
 import org.tron.common.utils.ByteArray;
