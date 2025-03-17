@@ -1,10 +1,16 @@
-apply plugin: 'com.android.library'
-apply plugin: 'com.google.protobuf'
-apply plugin: 'maven-publish'
+//apply plugin: 'com.android.library'
+//apply plugin: 'com.google.protobuf'
+//apply plugin: 'maven-publish'
+plugins {
+    id 'com.android.library'
+//    id 'org.jetbrains.kotlin.android'
+    id 'com.google.protobuf'
+    id 'maven-publish'
+}
 group = 'org.tronlink'
 
 android {
-    compileSdkVersion 33
+    compileSdk 34
     namespace = "org.tron"
     defaultConfig {
         minSdkVersion 21
@@ -12,6 +18,7 @@ android {
         versionCode 4
         versionName "1.0.4"
         multiDexEnabled true
+        consumerProguardFiles "consumer-rules.pro"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     dexOptions {
@@ -39,16 +46,16 @@ android {
 
 protobuf {
     protoc {
-        artifact = 'com.google.protobuf:protoc:3.5.1-1'
-//         artifact = 'com.google.protobuf:protoc:3.5.1-1:osx-x86_64'
+//        artifact = 'com.google.protobuf:protoc:3.5.1-1'
+         artifact = 'com.google.protobuf:protoc:3.5.1-1:osx-x86_64'
     }
     plugins {
 //        javalite {
 //            artifact = "com.google.protobuf:protoc-gen-javalite:3.0.0"
 //        }
         grpc {
-            artifact = 'io.grpc:protoc-gen-grpc-java:1.9.0'
-//            artifact = 'io.grpc:protoc-gen-grpc-java:1.9.0:osx-x86_64'
+//            artifact = 'io.grpc:protoc-gen-grpc-java:1.9.0'
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.9.0:osx-x86_64'
         }
     }
     generateProtoTasks {
@@ -65,11 +72,11 @@ protobuf {
     }
 }
 
-repositories {
-    flatDir {
-        dirs 'libs'
-    }
-}
+//repositories {
+//    flatDir {
+//        dirs 'libs'
+//    }
+//}
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     //noinspection GradleCompatible
@@ -102,6 +109,7 @@ dependencies {
     //keystore
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.2'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.16.2'
+    implementation 'com.github.jitpack:android-example:1.0.1'
 
     //retrofit+rxjava
     implementation 'com.squareup.retrofit2:retrofit:2.11.0'
@@ -115,10 +123,14 @@ afterEvaluate {
         publications {
             // Creates a Maven publication called "release".
             release(MavenPublication) {
-                from components.findByName('release')
+//                from components.findByName('release')
                 groupId = 'org.tronlink'
                 artifactId = 'tronlink-android-core'
                 version = "${android.defaultConfig.versionName}"
+
+//                afterEvaluate {
+//                    from components.release
+//                }
             }
         }
     }
