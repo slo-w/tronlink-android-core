@@ -200,7 +200,7 @@ public class TypeDecoder {
             listcons = DynamicArray.class.getConstructor(Class.class, List.class);
         } else {
             Class<?> arrayClass =
-                    Class.forName("org.web3j.abi.datatypes.generated.StaticArray" + arraySize);
+                    Class.forName("org.tron.common.crypto.datatypes.generated.StaticArray" + arraySize);
             listcons = arrayClass.getConstructor(Class.class, List.class);
         }
         // create a list of arguments coerced to the correct type of sub-TypeReference
@@ -652,7 +652,7 @@ public class TypeDecoder {
         try {
             Class<? extends StaticArray> arrayClass =
                     (Class<? extends StaticArray>)
-                            Class.forName("org.web3j.abi.datatypes.generated.StaticArray" + length);
+                            Class.forName("org.tron.common.crypto.datatypes.generated.StaticArray" + length);
             return (T) arrayClass.getConstructor(List.class).newInstance(elements);
         } catch (ReflectiveOperationException e) {
             throw new UnsupportedOperationException(e);

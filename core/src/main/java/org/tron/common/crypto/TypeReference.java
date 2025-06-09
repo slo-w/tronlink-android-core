@@ -206,7 +206,7 @@ public abstract class TypeReference<T extends org.tron.common.crypto.datatypes.T
                 if (arraySizeInt <= StaticArray.MAX_SIZE_OF_STATIC_ARRAY) {
                     arrayclass =
                             Class.forName(
-                                    "org.web3j.abi.datatypes.generated.StaticArray" + arraySize);
+                                    "org.tron.common.crypto.datatypes.generated.StaticArray" + arraySize);
                 } else {
                     arrayclass = StaticArray.class;
                 }
