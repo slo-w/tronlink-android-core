@@ -1,6 +1,8 @@
 # tronlink-android-core
 
-TronLink Wallet is a decentralized non-custodial wallet.TronLink-Core is the core module of TronLink Wallet, which provides core functions such as Create Wallet, Get Address, and Sign Transaction.
+TronLink Wallet is a decentralized non-custodial wallet.TronLink-Core is the core module of TronLink Wallet, which provides core functions such as Create Wallet, Get Address and Sign Transaction.
+
+A lightweight analytics component is bundled to support internal product insights. This component is strictly non-identifying — it neither accesses nor transmits any data that could be linked to an individual user, wallet address, or on-chain activity.
 
 ## Requirements
 
