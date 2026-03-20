@@ -3,10 +3,10 @@ apply plugin: 'com.google.protobuf'
 
 
 android {
-    compileSdk 33
+    compileSdk 34
     namespace = "org.tron.core.example"
     defaultConfig {
-        minSdkVersion 21
+        minSdkVersion 23
         applicationId "org.tron.core.example"
         versionCode 1
         versionName "1.0"
