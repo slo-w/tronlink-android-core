@@ -484,14 +484,13 @@ public class TransactionUtils {
                 v += 27;
             }
             ECKey.ECDSASignature ecdsaSignature = ECKey.ECDSASignature.fromComponents(r, s, v);
-            String TRON_HEAD = "\u0019TRON Signed Message:\n32";
-
-            byte[] bytes = ECKey.signatureToAddress(Hash.sha3((TRON_HEAD + message).getBytes()), ecdsaSignature);
+            // use v2
+            byte[] bytes = ECKey.signatureToAddress(Sign.getPrefixedMessageHashV2(message.getBytes()), ecdsaSignature);
             if (ArrayUtils.isEmpty(bytes)) return false;
 
             return Arrays.equals(bytes, AddressUtil.decode58Check(address));
         } catch (Exception e) {
-            LogUtils.e(e);
+            org.tron.common.utils.LogUtils.e(e);
             return false;
         }
     }
