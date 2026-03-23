@@ -11,8 +11,8 @@ android {
     namespace = "org.tron"
     defaultConfig {
         minSdk 21
-        versionCode 7
-        versionName "1.0.7"
+        versionCode 8
+        versionName "1.0.8"
         multiDexEnabled true
         consumerProguardFiles "consumer-rules.pro"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
@@ -111,7 +111,6 @@ dependencies {
     //keystore
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.8.5'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.8.5'
-    implementation 'com.github.jitpack:android-example:1.0.1'
 
     //retrofit+rxjava
     implementation 'com.squareup.retrofit2:retrofit:2.11.0'
