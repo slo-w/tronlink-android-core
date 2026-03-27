@@ -42,6 +42,7 @@ public class KeyStoreUtils {
     static {
         objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper.deactivateDefaultTyping();
     }
 
     public static String getKeyStoreWithPrivate(String password, Wallet wallet) throws CipherException {

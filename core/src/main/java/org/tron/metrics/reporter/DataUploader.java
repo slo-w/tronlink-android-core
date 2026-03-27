@@ -70,10 +70,8 @@ public class DataUploader {
     private void executeNetworkRequest(DataPreparationManager.DataPreparationResult prepResult, long startTime, IUploadResultCallback iUploadResultCallback) {
         try {
             StatDataRequest statRequest = prepResult.getRequest();
-            LogUtils.i(TAG, "Prepared request data: " + GsonUtils.toGsonString(statRequest));
 
             okhttp3.RequestBody requestBody = createRequestBody(statRequest);
-            LogUtils.i(TAG, "Request body created, starting network request");
 
             ReporterHttpApi api = createStatDataAPI();
 
@@ -97,7 +95,6 @@ public class DataUploader {
 
     private okhttp3.RequestBody createRequestBody(StatDataRequest statRequest) {
         String jsonString = GsonUtils.toGsonString(statRequest);
-        LogUtils.i(TAG, "Creating request body, JSON data: " + jsonString);
         return okhttp3.RequestBody.create(
                 MediaType.parse("application/json; charset=utf-8"),
                 jsonString

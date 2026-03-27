@@ -107,10 +107,9 @@ dependencies {
     // SLF4J
     implementation 'org.slf4j:slf4j-api:1.7.25'
 
-    implementation 'com.alibaba:fastjson:1.2.83'
     //keystore
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.8.5'
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.8.5'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.3'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.18.3'
 
     //retrofit+rxjava
     implementation 'com.squareup.retrofit2:retrofit:2.11.0'
