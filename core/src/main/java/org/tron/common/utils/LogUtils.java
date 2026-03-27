@@ -41,14 +41,14 @@ public class LogUtils {
     /**
      * Whether to allow log output
      */
-    private static int mDebuggable = LEVEL_NONE;
+    private static volatile int mDebuggable = LEVEL_NONE;
 
     /**
      * Whether the current environment is debug.
      * Controlled by the calling app via init(boolean, int).
      * When false, all log output is suppressed regardless of level.
      */
-    private static boolean mIsDebug = false;
+    private static volatile boolean mIsDebug = false;
 
     /**
      * variable for timing
@@ -79,12 +79,17 @@ public class LogUtils {
 
     /**
      * @deprecated Use {@link #init(boolean, int)} instead.
+     * <b>Behavior change notice:</b> this method now also sets the internal
+     * {@code mIsDebug} flag (derived as {@code debugLevel > LEVEL_NONE}).
+     * Callers passing {@code LEVEL_NONE} will have all logs suppressed.
+     * Migrate to {@link #init(boolean, int)} for explicit control.
      */
     @Deprecated
     public static void init(int debugLevel) {
-        if (debugLevel >= LEVEL_NONE && debugLevel <= LEVEL_ERROR) {
-            mDebuggable = debugLevel;
+        if (debugLevel < LEVEL_NONE || debugLevel > LEVEL_ERROR) {
+            return;
         }
+        init(debugLevel > LEVEL_NONE, debugLevel);
     }
 
     /**
