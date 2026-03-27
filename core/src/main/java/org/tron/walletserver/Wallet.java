@@ -26,14 +26,14 @@ public class Wallet implements Comparable<Wallet>, Serializable {
     private String walletName = "";
     private String encPassword = "";
     public String address = "";
-    private byte[] encPrivateKey;
-    private byte[] privateKeyBytes33;
+    private transient byte[] encPrivateKey;
+    private transient byte[] privateKeyBytes33;
 
 
     private byte[] publicKey;
     private String iconRes;//Avatar
     private boolean isBackUp;//whether  backed up
-    private String mnemonic;
+    private transient String mnemonic;
     private String keyStore;
     private int createType = -1;// tronconfig type
     private long createTime;
