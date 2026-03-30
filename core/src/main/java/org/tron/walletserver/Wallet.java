@@ -13,11 +13,9 @@ import org.tron.common.utils.GsonFormatUtils;
 import org.tron.common.utils.Utils;
 import org.tron.config.Parameter;
 
-import java.io.Serializable;
 import java.math.BigInteger;
 
-public class Wallet implements Comparable<Wallet>, Serializable {
-    private static final long serialVersionUID = Wallet.class.hashCode();
+public class Wallet implements Comparable<Wallet> {
 
     private ECKey mECKey = null;
 

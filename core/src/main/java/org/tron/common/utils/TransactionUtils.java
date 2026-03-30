@@ -49,7 +49,6 @@ import org.tron.protos.contract.VoteAssetContractOuterClass;
 import org.tron.protos.contract.WitnessContract;
 import org.tron.walletserver.AddressUtil;
 
-import java.security.SignatureException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -247,82 +246,6 @@ public class TransactionUtils {
         }
         ECKey.ECDSASignature signature = ECKey.ECDSASignature.fromComponents(r, s, v);
         return signature.toBase64();
-    }
-
-    /*
-     * 1. check hash
-     * 2. check double spent
-     * 3. check sign
-     * 4. check balance10_TRX
-     */
-    public static boolean validTransaction(Transaction signedTransaction) {
-        if (signedTransaction.getRawData().getContract(0).getType()
-                != Contract.ContractType.ShieldedTransferContract) {
-            return validTransaction3(signedTransaction);
-        } else {
-            ShieldContract.ShieldedTransferContract shieldContract = null;
-            try {
-                shieldContract = TransactionUtils.unpackContract(signedTransaction.getRawData()
-                        .getContract(0), ShieldContract.ShieldedTransferContract.class);
-                //type:  ShieldedTransferContract  common signature typ
-                if (shieldContract.getFromAmount() != 0)
-                    return validTransaction3(signedTransaction);
-
-                List<ShieldContract.SpendDescription> spendDescList = shieldContract.getSpendDescriptionList();
-
-                if (spendDescList == null || spendDescList.isEmpty()) return false;
-                ShieldContract.SpendDescription spendDescription = spendDescList.get(0);
-                byte[] spendSignByte = spendDescription.getSpendAuthoritySignature().toByteArray();
-                if (spendSignByte == null || spendSignByte.length == 0) return false;
-
-            } catch (InvalidProtocolBufferException e) {
-                LogUtils.e(e);
-                return false;
-            }
-            return true;
-        }
-
-    }
-
-    /*
-     * 1. check hash
-     * 2. check double spent
-     * 3. check sign
-     * 4. check balance10_TRX
-     */
-    public static boolean validTransaction3(Transaction signedTransaction) {
-        assert (signedTransaction.getSignatureCount() ==
-                signedTransaction.getRawData().getContractCount());
-        List<Contract> listContract = signedTransaction.getRawData().getContractList();
-        byte[] hash = sha256(signedTransaction.getRawData().toByteArray());
-        int count = signedTransaction.getSignatureCount();
-        if (count == 0) {
-            return false;
-        }
-        for (int i = 0; i < count; ++i) {
-            try {
-                Contract contract = listContract.get(i);
-                byte[] owner = getOwner(contract);
-                byte[] address = ECKey
-                        .signatureToAddress(hash, getBase64FromByteString(signedTransaction.getSignature(i)));
-
-                // NOTE: owner address equality check is intentionally skipped here.
-                // TRON supports multi-signature: authorized signers (active permission keys)
-                // are not necessarily the owner address itself. A full permission check
-                // requires querying the account's active permission key list from the chain,
-                // which is not available in this client-side context.
-                // The signature is still verified cryptographically (signatureToAddress above);
-                // permission-level validation is delegated to the full node.
-                if (address == null || address.length == 0) {
-                    return false;
-                }
-            } catch (SignatureException e) {
-                LogUtils.e(e);
-                return false;
-            }
-        }
-        return true;
-
     }
 
     /**
