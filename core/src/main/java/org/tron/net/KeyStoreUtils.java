@@ -2,9 +2,6 @@ package org.tron.net;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 
 import org.bouncycastle.crypto.digests.SHA256Digest;
@@ -35,15 +32,6 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class KeyStoreUtils {
-
-
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    static {
-        objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        objectMapper.deactivateDefaultTyping();
-    }
 
     public static String getKeyStoreWithPrivate(String password, Wallet wallet) throws CipherException {
         return getKeyStore(password, wallet.getECKey().getPrivKeyBytes(), wallet.getAddress());
@@ -84,12 +72,12 @@ public class KeyStoreUtils {
 
     public static String getPrivateWithKeyStore(String keyStore, String password) throws CipherException, IOException {
 
-        return ByteArray.toHexString(decrypt(password, objectMapper.readValue(keyStore, WalletFile.class)).getPrivKeyBytes());
+        return ByteArray.toHexString(decrypt(password, WalletFile.createGson().fromJson(keyStore, WalletFile.class)).getPrivKeyBytes());
     }
 
     public static String getMnemonicWithKeyStore(String keyStore, String password) throws CipherException, IOException {
 
-        return new String(decryptToByte(password, objectMapper.readValue(keyStore, WalletFile.class)));
+        return new String(decryptToByte(password, WalletFile.createGson().fromJson(keyStore, WalletFile.class)));
     }
 
     private static ECKey decrypt(String password, WalletFile walletFile)

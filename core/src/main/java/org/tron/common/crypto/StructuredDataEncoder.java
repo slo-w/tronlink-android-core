@@ -16,7 +16,14 @@ import static org.tron.common.crypto.Hash.sha3;
 import static org.tron.common.crypto.Hash.sha3String;
 import static org.tron.common.crypto.datatypes.Type.MAX_BYTE_LENGTH;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.reflect.TypeToken;
 
 import org.tron.common.bip32.Numeric;
 import org.tron.common.crypto.datatypes.AbiTypes;
@@ -53,6 +60,24 @@ public class StructuredDataEncoder {
 
     final String bytesTypeRegex = "^bytes[0-9][0-9]?$";
     final Pattern bytesTypePattern = Pattern.compile(bytesTypeRegex);
+
+    private static class EIP712DomainDeserializer
+            implements JsonDeserializer<StructuredData.EIP712Domain> {
+        @Override
+        public StructuredData.EIP712Domain deserialize(JsonElement json, java.lang.reflect.Type typeOfT,
+                JsonDeserializationContext context) throws JsonParseException {
+            JsonObject obj = json.getAsJsonObject();
+            String name = obj.has("name") ? obj.get("name").getAsString() : null;
+            String version = obj.has("version") ? obj.get("version").getAsString() : null;
+            String chainId = obj.has("chainId") ? obj.get("chainId").getAsString() : null;
+            String verifyingContract = obj.has("verifyingContract")
+                    ? obj.get("verifyingContract").getAsString() : null;
+            String salt = obj.has("salt") ? obj.get("salt").getAsString() : null;
+            org.tron.common.crypto.datatypes.Address addressObj = verifyingContract != null
+                    ? new org.tron.common.crypto.datatypes.Address(verifyingContract) : null;
+            return new StructuredData.EIP712Domain(name, version, chainId, addressObj, salt);
+        }
+    }
 
     // This regex tries to extract the dimensions from the
     // square brackets of an array declaration using the ``Regex Groups``.
@@ -515,27 +540,14 @@ public class StructuredDataEncoder {
 
     @SuppressWarnings("unchecked")
     public byte[] hashDomain() throws RuntimeException {
-        ObjectMapper oMapper = new ObjectMapper();
-        HashMap<String, Object> data =
-                oMapper.convertValue(jsonMessageObject.getDomain(), HashMap.class);
-
-        if (data.get("chainId") != null) {
-            data.put("chainId", ((HashMap<String, Object>) data.get("chainId")).get("value"));
-        } else {
-            data.remove("chainId");
-        }
-
-        if (data.get("verifyingContract") != null) {
-            data.put(
-                    "verifyingContract",
-                    ((HashMap<String, Object>) data.get("verifyingContract")).get("value"));
-        } else {
-            data.remove("verifyingContract");
-        }
-
-        if (data.get("salt") == null) {
-            data.remove("salt");
-        }
+        StructuredData.EIP712Domain domain = jsonMessageObject.getDomain();
+        HashMap<String, Object> data = new HashMap<>();
+        if (domain.getName() != null) data.put("name", domain.getName());
+        if (domain.getVersion() != null) data.put("version", domain.getVersion());
+        if (domain.getChainId() != null) data.put("chainId", domain.getChainId().getValue());
+        if (domain.getVerifyingContract() != null)
+            data.put("verifyingContract", domain.getVerifyingContract().getValue());
+        if (domain.getSalt() != null) data.put("salt", domain.getSalt());
         boolean hasTip712Domain = jsonMessageObject.getTypes().containsKey("TIP712Domain");
         return sha3(encodeData(hasTip712Domain ? "TIP712Domain" : "EIP712Domain", data));
     }
@@ -562,11 +574,13 @@ public class StructuredDataEncoder {
 
     public StructuredData.EIP712Message parseJSONMessage(String jsonMessageInString)
             throws IOException, RuntimeException {
-        ObjectMapper mapper = new ObjectMapper();
+        Gson gson = new GsonBuilder()
+            .registerTypeAdapter(StructuredData.EIP712Domain.class, new EIP712DomainDeserializer())
+            .create();
 
         // convert JSON string to EIP712Message object
         StructuredData.EIP712Message tempJSONMessageObject =
-                mapper.readValue(jsonMessageInString, StructuredData.EIP712Message.class);
+                gson.fromJson(jsonMessageInString, StructuredData.EIP712Message.class);
         validateStructuredData(tempJSONMessageObject);
 
         return tempJSONMessageObject;

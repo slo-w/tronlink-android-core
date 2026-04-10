@@ -1,8 +1,5 @@
 package org.tron.common.utils.abi;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.util.encoders.Hex;
 import org.tron.common.crypto.Hash;
@@ -122,9 +119,9 @@ public class AbiUtil {
 
             List strings;
             try {
-                ObjectMapper mapper = new ObjectMapper();
-                strings = mapper.readValue(arrayValues, List.class);
-            } catch (IOException e) {
+                strings = new com.google.gson.Gson().fromJson(arrayValues,
+                    new com.google.gson.reflect.TypeToken<List<Object>>(){}.getType());
+            } catch (Exception e) {
                 LogUtils.e(e);
                 return null;
             }
@@ -184,9 +181,9 @@ public class AbiUtil {
 
             List strings;
             try {
-                ObjectMapper mapper = new ObjectMapper();
-                strings = mapper.readValue(arrayValues, List.class);
-            } catch (IOException e) {
+                strings = new com.google.gson.Gson().fromJson(arrayValues,
+                    new com.google.gson.reflect.TypeToken<List<Object>>(){}.getType());
+            } catch (Exception e) {
                 LogUtils.e(e);
                 return null;
             }

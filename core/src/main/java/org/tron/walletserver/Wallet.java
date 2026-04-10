@@ -362,4 +362,36 @@ public class Wallet implements Comparable<Wallet> {
     }
 
     //    ================= END =============================
+
+    public void clearSensitiveData() {
+
+        if (mnemonic != null) {
+            mnemonic = null;
+        }
+        if (privateKeyBytes33 != null) {
+            clearByteArray(privateKeyBytes33);
+            privateKeyBytes33 = null;
+        }
+
+        if (encPrivateKey != null) {
+            clearByteArray(encPrivateKey);
+            encPrivateKey = null;
+        }
+
+        if (mECKey != null) {
+            mECKey = null;
+        }
+
+        if (keyStore != null && !keyStore.isEmpty()) {
+            keyStore = null;
+        }
+    }
+
+    private void clearByteArray(byte[] data) {
+        if (data != null && data.length > 0) {
+            for (int i = 0; i < data.length; i++) {
+                data[i] = 0;
+            }
+        }
+    }
 }

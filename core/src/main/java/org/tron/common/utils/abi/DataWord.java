@@ -18,9 +18,6 @@ package org.tron.common.utils.abi;
  * along with the ethereumJ library. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-
 import org.bouncycastle.util.Arrays;
 import org.bouncycastle.util.encoders.Hex;
 import org.tron.common.utils.ByteUtil;
@@ -63,7 +60,6 @@ public class DataWord implements Comparable<DataWord> {
     this.data = data.array();
   }
 
-  @JsonCreator
   public DataWord(String data) {
     this(Hex.decode(data));
   }
@@ -411,7 +407,6 @@ public class DataWord implements Comparable<DataWord> {
     this.data = ByteUtil.copyToArray(result.and(MAX_VALUE));
   }
 
-  @JsonValue
   @Override
   public String toString() {
     return Hex.toHexString(data);
