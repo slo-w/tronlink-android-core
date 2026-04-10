@@ -14,6 +14,7 @@ import org.tron.common.utils.Utils;
 import org.tron.config.Parameter;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 
 public class Wallet implements Comparable<Wallet> {
 
@@ -366,6 +367,7 @@ public class Wallet implements Comparable<Wallet> {
     public void clearSensitiveData() {
 
         if (mnemonic != null) {
+            clearCharArray(mnemonic.toCharArray());
             mnemonic = null;
         }
         if (privateKeyBytes33 != null) {
@@ -383,15 +385,20 @@ public class Wallet implements Comparable<Wallet> {
         }
 
         if (keyStore != null && !keyStore.isEmpty()) {
+            clearCharArray(keyStore.toCharArray());
             keyStore = null;
         }
     }
 
     private void clearByteArray(byte[] data) {
-        if (data != null && data.length > 0) {
-            for (int i = 0; i < data.length; i++) {
-                data[i] = 0;
-            }
+        if (data != null) {
+            Arrays.fill(data, (byte) 0);
+        }
+    }
+
+    private void clearCharArray(char[] data) {
+        if (data != null) {
+            Arrays.fill(data, '\0');
         }
     }
 }
