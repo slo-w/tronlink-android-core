@@ -23,6 +23,7 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
 
 import org.tron.common.bip32.Numeric;
@@ -375,7 +376,7 @@ public class StructuredDataEncoder {
     }
 
     @SuppressWarnings("unchecked")
-    public byte[] encodeData(String primaryType, HashMap<String, Object> data)
+    public byte[] encodeData(String primaryType, Map<String, Object> data)
             throws RuntimeException {
         HashMap<String, List<StructuredData.Entry>> types = jsonMessageObject.getTypes();
 
@@ -402,7 +403,7 @@ public class StructuredDataEncoder {
             } else if (types.containsKey(field.getType())) {
                 // User Defined Type
                 byte[] hashedValue =
-                        sha3(encodeData(field.getType(), (HashMap<String, Object>) value));
+                        sha3(encodeData(field.getType(), (Map<String, Object>) value));
                 encTypes.add("bytes32");
                 encValues.add(hashedValue);
             } else if (bytesTypePattern.matcher(field.getType()).find()) {
@@ -432,7 +433,7 @@ public class StructuredDataEncoder {
                                 sha3(
                                         encodeData(
                                                 baseTypeName,
-                                                (HashMap<String, Object>)
+                                                (Map<String, Object>)
                                                         arrayItem)); // need to hash each user type
                         // before adding
                     } else {
@@ -525,7 +526,7 @@ public class StructuredDataEncoder {
         }
     }
 
-    public byte[] hashMessage(String primaryType, HashMap<String, Object> data)
+    public byte[] hashMessage(String primaryType, Map<String, Object> data)
             throws RuntimeException {
         return sha3(encodeData(primaryType, data));
     }
@@ -534,7 +535,7 @@ public class StructuredDataEncoder {
         byte[] dataHash =
                 hashMessage(
                         jsonMessageObject.getPrimaryType(),
-                        (HashMap<String, Object>) jsonMessageObject.getMessage());
+                        (Map<String, Object>) jsonMessageObject.getMessage());
         return dataHash;
     }
 
@@ -576,6 +577,7 @@ public class StructuredDataEncoder {
             throws IOException, RuntimeException {
         Gson gson = new GsonBuilder()
             .registerTypeAdapter(StructuredData.EIP712Domain.class, new EIP712DomainDeserializer())
+            .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
             .create();
 
         // convert JSON string to EIP712Message object
@@ -609,7 +611,7 @@ public class StructuredDataEncoder {
         byte[] dataHash =
                 hashMessage(
                         jsonMessageObject.getPrimaryType(),
-                        (HashMap<String, Object>) jsonMessageObject.getMessage());
+                        (Map<String, Object>) jsonMessageObject.getMessage());
         baos.write(dataHash, 0, dataHash.length);
 
         return baos.toByteArray();
