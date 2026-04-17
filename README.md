@@ -25,7 +25,15 @@ public synchronized String queryUIDByAddress(String address) {
 
 ### What Is Uploaded
 
-Records are merged locally per `(uid, actionType, tokenAddress, day)` before upload, and raw amounts are replaced with a 9-bucket logarithmic histogram (`A1`..`A9`). And the payloads are sent encrypted.
+Records are merged locally per `(uid, actionType, tokenAddress, day)` before upload, and raw amounts are replaced with a 9-bucket logarithmic histogram (`A1..A9`).
+
+Never collected, never transmitted:
+
+ • Wallet addresses , Public keys, Mnemonic phrases, Private keys.
+
+ • Transaction hashes , Contract call parameters.
+
+ • IP, device fingerprint,  any identifier derived from the host browser.
 
 
 ## Requirements
