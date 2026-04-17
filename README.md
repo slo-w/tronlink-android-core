@@ -25,23 +25,7 @@ public synchronized String queryUIDByAddress(String address) {
 
 ### What Is Uploaded
 
-Records are merged locally per `(uid, actionType, tokenAddress, day)` before upload, and raw amounts are replaced with a 9-bucket logarithmic histogram (`A1`..`A9`). Only these two payloads are sent (encrypted):
-
-```java
-// StatXData — daily asset snapshot (one per uid per UTC day)
-String uId;           // anonymous UUID, never the address
-String idType;        // wallet provenance enum (mnemonic/imported/hardware…)
-String balance;
-String day;           // YYYY-MM-DD (UTC)
-
-// StatYData — aggregated daily action counts
-String uId;
-String actionType;    // closed enum; unknown contract calls discarded
-String tokenAddress;  // TRX / TRC10 / TRC20 id
-String count, tokenAmount, energy, bandwidth, burn;
-String amountDistribution;  // bucketed, e.g. "A1:1,A2:3"
-String day;
-```
+Records are merged locally per `(uid, actionType, tokenAddress, day)` before upload, and raw amounts are replaced with a 9-bucket logarithmic histogram (`A1`..`A9`). And the payloads are sent encrypted.
 
 
 ## Requirements
