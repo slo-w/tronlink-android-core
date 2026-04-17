@@ -31,7 +31,7 @@ Records are merged locally per `(uid, actionType, tokenAddress, day)` before upl
 // StatXData — daily asset snapshot (one per uid per UTC day)
 String uId;           // anonymous UUID, never the address
 String idType;        // wallet provenance enum (mnemonic/imported/hardware…)
-String trxBalance, usdtBalance, usdBalance;
+String balance;
 String day;           // YYYY-MM-DD (UTC)
 
 // StatYData — aggregated daily action counts
