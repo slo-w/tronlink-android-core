@@ -13,7 +13,7 @@ public class GsonUtils {
 
     static {
         gson = new GsonBuilder()
-                .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
+                .setObjectToNumberStrategy(ToNumberPolicy.LAZILY_PARSED_NUMBER)
                 .create();
     }
 
