@@ -126,16 +126,8 @@ public class TransactionCoreUnitTest {
     }
 
     public boolean broadcastTransaction(Protocol.Transaction mTransactionSigned) {
-
-        boolean sent = false;
-        GrpcAPI.Return aReturn;
-        if (!TransactionUtils.validTransaction(mTransactionSigned)) aReturn = null;
-        else {
-            aReturn = stub.broadcastTransaction(mTransactionSigned);
-        }
-
-        return TransactionUtils.validTransaction(mTransactionSigned)
-                && aReturn == null ? false : aReturn.getResult();
+        GrpcAPI.Return aReturn = stub.broadcastTransaction(mTransactionSigned);
+        return aReturn != null && aReturn.getResult();
     }
 
 

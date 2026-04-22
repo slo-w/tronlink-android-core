@@ -41,7 +41,14 @@ public class LogUtils {
     /**
      * Whether to allow log output
      */
-    private static int mDebuggable = LEVEL_NONE;
+    private static volatile int mDebuggable = LEVEL_NONE;
+
+    /**
+     * Whether the current environment is debug.
+     * Controlled by the calling app via init(boolean, int).
+     * When false, all log output is suppressed regardless of level.
+     */
+    private static volatile boolean mIsDebug = false;
 
     /**
      * variable for timing
@@ -52,17 +59,44 @@ public class LogUtils {
      */
     private static final Object mLogLock = new Object();
 
-    public static void init(int debugLevel) {
-        if (debugLevel >= LEVEL_NONE && debugLevel <= LEVEL_ERROR) {
+    /**
+     * Initialize with debug flag and log level.
+     * Recommended usage in the calling app's Application:
+     *   LogUtils.init(BuildConfig.DEBUG, LogUtils.LEVEL_VERBOSE);
+     * In release builds, pass isDebug=false to suppress all log output.
+     *
+     * @param isDebug    pass BuildConfig.DEBUG from the calling app
+     * @param debugLevel desired log level (only effective when isDebug=true)
+     */
+    public static void init(boolean isDebug, int debugLevel) {
+        mIsDebug = isDebug;
+        if (isDebug && debugLevel >= LEVEL_NONE && debugLevel <= LEVEL_ERROR) {
             mDebuggable = debugLevel;
+        } else {
+            mDebuggable = LEVEL_NONE;
         }
+    }
+
+    /**
+     * @deprecated Use {@link #init(boolean, int)} instead.
+     * <b>Behavior change notice:</b> this method now also sets the internal
+     * {@code mIsDebug} flag (derived as {@code debugLevel > LEVEL_NONE}).
+     * Callers passing {@code LEVEL_NONE} will have all logs suppressed.
+     * Migrate to {@link #init(boolean, int)} for explicit control.
+     */
+    @Deprecated
+    public static void init(int debugLevel) {
+        if (debugLevel < LEVEL_NONE || debugLevel > LEVEL_ERROR) {
+            return;
+        }
+        init(debugLevel > LEVEL_NONE, debugLevel);
     }
 
     /**
      * output LOG as level v
      */
     public static void v(String msg) {
-        if (mDebuggable >= LEVEL_VERBOSE) {
+        if (mIsDebug && mDebuggable >= LEVEL_VERBOSE) {
             Log.v(mTag, "" + msg);
         }
     }
@@ -71,7 +105,7 @@ public class LogUtils {
      * output LOG as level v
      */
     public static void v(String mTag, String msg) {
-        if (mDebuggable >= LEVEL_VERBOSE) {
+        if (mIsDebug && mDebuggable >= LEVEL_VERBOSE) {
             Log.v(mTag, "" + msg);
         }
     }
@@ -80,7 +114,7 @@ public class LogUtils {
      * output LOG as level d
      */
     public static void d(String msg) {
-        if (mDebuggable >= LEVEL_DEBUG) {
+        if (mIsDebug && mDebuggable >= LEVEL_DEBUG) {
             Log.d(mTag, "" + msg);
 
         }
@@ -90,7 +124,7 @@ public class LogUtils {
      * output LOG as level d
      */
     public static void d(String mTag, String msg) {
-        if (mDebuggable >= LEVEL_DEBUG) {
+        if (mIsDebug && mDebuggable >= LEVEL_DEBUG) {
             Log.d(mTag, "" + msg);
 
         }
@@ -100,7 +134,7 @@ public class LogUtils {
      * output LOG as level i
      */
     public static void i(String msg) {
-        if (mDebuggable >= LEVEL_INFO) {
+        if (mIsDebug && mDebuggable >= LEVEL_INFO) {
             Log.i(mTag, "" + msg);
         }
     }
@@ -109,7 +143,7 @@ public class LogUtils {
      * output LOG as level i
      */
     public static void i(String mTag, String msg) {
-        if (mDebuggable >= LEVEL_INFO) {
+        if (mIsDebug && mDebuggable >= LEVEL_INFO) {
             Log.i(mTag, "" + msg);
         }
     }
@@ -118,7 +152,7 @@ public class LogUtils {
      * output LOG as level w
      */
     public static void w(String msg) {
-        if (mDebuggable >= LEVEL_WARN) {
+        if (mIsDebug && mDebuggable >= LEVEL_WARN) {
             Log.w(mTag, "" + msg);
         }
     }
@@ -127,7 +161,7 @@ public class LogUtils {
      * output LOG as level w
      */
     public static void w(String mTag, String msg) {
-        if (mDebuggable >= LEVEL_WARN) {
+        if (mIsDebug && mDebuggable >= LEVEL_WARN) {
             Log.w(mTag, "" + msg);
         }
     }
@@ -136,7 +170,7 @@ public class LogUtils {
      * output Throwable LOG as level w
      */
     public static void w(Throwable tr) {
-        if (mDebuggable >= LEVEL_WARN) {
+        if (mIsDebug && mDebuggable >= LEVEL_WARN) {
             Log.w(mTag, "", tr);
         }
     }
@@ -145,7 +179,7 @@ public class LogUtils {
      * output Throwable & LOG as level w
      */
     public static void w(String msg, Throwable tr) {
-        if (mDebuggable >= LEVEL_WARN && null != msg) {
+        if (mIsDebug && mDebuggable >= LEVEL_WARN && null != msg) {
             Log.w(mTag, "" + msg, tr);
         }
     }
@@ -154,7 +188,7 @@ public class LogUtils {
      * output LOG as level e
      */
     public static void e(String msg) {
-        if (mDebuggable >= LEVEL_ERROR) {
+        if (mIsDebug && mDebuggable >= LEVEL_ERROR) {
             Log.e(mTag, "" + msg);
         }
     }
@@ -163,7 +197,7 @@ public class LogUtils {
      * output LOG as level e
      */
     public static void e(String mTag, String msg) {
-        if (mDebuggable >= LEVEL_ERROR) {
+        if (mIsDebug && mDebuggable >= LEVEL_ERROR) {
             Log.e(mTag, "" + msg);
         }
     }
@@ -172,7 +206,7 @@ public class LogUtils {
      * output Throwable LOG as level e
      */
     public static void e(Throwable tr) {
-        if (mDebuggable >= LEVEL_ERROR) {
+        if (mIsDebug && mDebuggable >= LEVEL_ERROR) {
             Log.e(mTag, "", tr);
         }
     }
@@ -181,7 +215,7 @@ public class LogUtils {
      * output Throwable & LOG as level e
      */
     public static void e(String msg, Throwable tr) {
-        if (mDebuggable >= LEVEL_ERROR && null != msg) {
+        if (mIsDebug && mDebuggable >= LEVEL_ERROR && null != msg) {
             Log.e(mTag, "" + msg, tr);
         }
     }

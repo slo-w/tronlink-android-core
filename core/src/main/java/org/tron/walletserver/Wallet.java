@@ -13,11 +13,10 @@ import org.tron.common.utils.GsonFormatUtils;
 import org.tron.common.utils.Utils;
 import org.tron.config.Parameter;
 
-import java.io.Serializable;
 import java.math.BigInteger;
+import java.util.Arrays;
 
-public class Wallet implements Comparable<Wallet>, Serializable {
-    private static final long serialVersionUID = Wallet.class.hashCode();
+public class Wallet implements Comparable<Wallet> {
 
     private ECKey mECKey = null;
 
@@ -26,14 +25,14 @@ public class Wallet implements Comparable<Wallet>, Serializable {
     private String walletName = "";
     private String encPassword = "";
     public String address = "";
-    private byte[] encPrivateKey;
-    private byte[] privateKeyBytes33;
+    private transient byte[] encPrivateKey;
+    private transient byte[] privateKeyBytes33;
 
 
     private byte[] publicKey;
     private String iconRes;//Avatar
     private boolean isBackUp;//whether  backed up
-    private String mnemonic;
+    private transient String mnemonic;
     private String keyStore;
     private int createType = -1;// tronconfig type
     private long createTime;
@@ -364,4 +363,42 @@ public class Wallet implements Comparable<Wallet>, Serializable {
     }
 
     //    ================= END =============================
+
+    public void clearSensitiveData() {
+
+        if (mnemonic != null) {
+            clearCharArray(mnemonic.toCharArray());
+            mnemonic = null;
+        }
+        if (privateKeyBytes33 != null) {
+            clearByteArray(privateKeyBytes33);
+            privateKeyBytes33 = null;
+        }
+
+        if (encPrivateKey != null) {
+            clearByteArray(encPrivateKey);
+            encPrivateKey = null;
+        }
+
+        if (mECKey != null) {
+            mECKey = null;
+        }
+
+        if (keyStore != null && !keyStore.isEmpty()) {
+            clearCharArray(keyStore.toCharArray());
+            keyStore = null;
+        }
+    }
+
+    private void clearByteArray(byte[] data) {
+        if (data != null) {
+            Arrays.fill(data, (byte) 0);
+        }
+    }
+
+    private void clearCharArray(char[] data) {
+        if (data != null) {
+            Arrays.fill(data, '\0');
+        }
+    }
 }
