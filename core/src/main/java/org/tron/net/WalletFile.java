@@ -1,16 +1,15 @@
 package org.tron.net;
 
-import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.annotations.SerializedName;
 
-import java.io.IOException;
+import java.lang.reflect.Type;
 
 /**
  * Ethereum wallet file.
@@ -18,7 +17,11 @@ import java.io.IOException;
 public class WalletFile {
 
   private String address;
+
+  // Serializes as "crypto"; deserializes from either "crypto" or legacy "Crypto".
+  @SerializedName(value = "crypto", alternate = {"Crypto"})
   private Crypto crypto;
+
   private String id;
   private int version;
 
@@ -40,14 +43,8 @@ public class WalletFile {
     return crypto;
   }
 
-  @JsonSetter("crypto")
   public void setCrypto(Crypto crypto) {
     this.crypto = crypto;
-  }
-
-  @JsonSetter("Crypto")  // older wallet files may have this attribute name
-  public void setCryptoV1(Crypto crypto) {
-    setCrypto(crypto);
   }
 
   public String getId() {
@@ -157,18 +154,6 @@ public class WalletFile {
       return kdfparams;
     }
 
-    @JsonTypeInfo(
-        use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.EXTERNAL_PROPERTY,
-        property = "kdf")
-    @JsonSubTypes({
-        @JsonSubTypes.Type(value = Aes128CtrKdfParams.class, name = AES_128_CTR),
-        @JsonSubTypes.Type(value = ScryptKdfParams.class, name = SCRYPT)
-    })
-    // To support my Ether Wallet keys uncomment this annotation & comment out the above
-    //  @JsonDeserialize(using = KdfParamsDeserialiser.class)
-    // Also add the following to the ObjectMapperFactory
-    // objectMapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
     public void setKdfparams(KdfParams kdfparams) {
       this.kdfparams = kdfparams;
     }
@@ -458,29 +443,22 @@ public class WalletFile {
     }
   }
 
-  // If we need to work with MyEtherWallet we'll need to use this deserializer, see the
-  // following issue https://github.com/kvhnuke/etherwallet/issues/269
-  static class KdfParamsDeserialiser extends JsonDeserializer<KdfParams> {
-
+  static class KdfParamsDeserializer implements JsonDeserializer<KdfParams> {
     @Override
-    public KdfParams deserialize(
-        JsonParser jsonParser, DeserializationContext deserializationContext)
-        throws IOException {
-
-      ObjectMapper objectMapper = (ObjectMapper) jsonParser.getCodec();
-      ObjectNode root = objectMapper.readTree(jsonParser);
-      KdfParams kdfParams;
-
-      // it would be preferable to detect the class to use based on the kdf parameter in the
-      // container object instance
-      JsonNode n = root.get("n");
-      if (n == null) {
-        kdfParams = objectMapper.convertValue(root, Aes128CtrKdfParams.class);
+    public KdfParams deserialize(JsonElement json, Type typeOfT,
+                                  JsonDeserializationContext context) throws JsonParseException {
+      JsonObject obj = json.getAsJsonObject();
+      if (obj.has("n")) {
+        return context.deserialize(json, ScryptKdfParams.class);
       } else {
-        kdfParams = objectMapper.convertValue(root, ScryptKdfParams.class);
+        return context.deserialize(json, Aes128CtrKdfParams.class);
       }
-
-      return kdfParams;
     }
+  }
+
+  public static Gson createGson() {
+    return new GsonBuilder()
+        .registerTypeAdapter(KdfParams.class, new KdfParamsDeserializer())
+        .create();
   }
 }

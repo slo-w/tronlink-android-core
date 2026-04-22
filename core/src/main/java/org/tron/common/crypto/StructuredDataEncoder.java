@@ -16,7 +16,15 @@ import static org.tron.common.crypto.Hash.sha3;
 import static org.tron.common.crypto.Hash.sha3String;
 import static org.tron.common.crypto.datatypes.Type.MAX_BYTE_LENGTH;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.ToNumberPolicy;
+import com.google.gson.reflect.TypeToken;
 
 import org.tron.common.bip32.Numeric;
 import org.tron.common.crypto.datatypes.AbiTypes;
@@ -53,6 +61,27 @@ public class StructuredDataEncoder {
 
     final String bytesTypeRegex = "^bytes[0-9][0-9]?$";
     final Pattern bytesTypePattern = Pattern.compile(bytesTypeRegex);
+
+    private static class EIP712DomainDeserializer
+            implements JsonDeserializer<StructuredData.EIP712Domain> {
+        @Override
+        public StructuredData.EIP712Domain deserialize(JsonElement json, java.lang.reflect.Type typeOfT,
+                JsonDeserializationContext context) throws JsonParseException {
+            JsonObject obj = json.getAsJsonObject();
+            String name = optString(obj, "name");
+            String version = optString(obj, "version");
+            String chainId = optString(obj, "chainId");
+            String verifyingContract = optString(obj, "verifyingContract");
+            String salt = optString(obj, "salt");
+            org.tron.common.crypto.datatypes.Address addressObj = verifyingContract != null
+                    ? new org.tron.common.crypto.datatypes.Address(verifyingContract) : null;
+            return new StructuredData.EIP712Domain(name, version, chainId, addressObj, salt);
+        }
+
+        private static String optString(JsonObject obj, String key) {
+            return obj.has(key) && !obj.get(key).isJsonNull() ? obj.get(key).getAsString() : null;
+        }
+    }
 
     // This regex tries to extract the dimensions from the
     // square brackets of an array declaration using the ``Regex Groups``.
@@ -350,7 +379,7 @@ public class StructuredDataEncoder {
     }
 
     @SuppressWarnings("unchecked")
-    public byte[] encodeData(String primaryType, HashMap<String, Object> data)
+    public byte[] encodeData(String primaryType, Map<String, Object> data)
             throws RuntimeException {
         HashMap<String, List<StructuredData.Entry>> types = jsonMessageObject.getTypes();
 
@@ -377,7 +406,7 @@ public class StructuredDataEncoder {
             } else if (types.containsKey(field.getType())) {
                 // User Defined Type
                 byte[] hashedValue =
-                        sha3(encodeData(field.getType(), (HashMap<String, Object>) value));
+                        sha3(encodeData(field.getType(), (Map<String, Object>) value));
                 encTypes.add("bytes32");
                 encValues.add(hashedValue);
             } else if (bytesTypePattern.matcher(field.getType()).find()) {
@@ -407,7 +436,7 @@ public class StructuredDataEncoder {
                                 sha3(
                                         encodeData(
                                                 baseTypeName,
-                                                (HashMap<String, Object>)
+                                                (Map<String, Object>)
                                                         arrayItem)); // need to hash each user type
                         // before adding
                     } else {
@@ -500,7 +529,7 @@ public class StructuredDataEncoder {
         }
     }
 
-    public byte[] hashMessage(String primaryType, HashMap<String, Object> data)
+    public byte[] hashMessage(String primaryType, Map<String, Object> data)
             throws RuntimeException {
         return sha3(encodeData(primaryType, data));
     }
@@ -509,33 +538,20 @@ public class StructuredDataEncoder {
         byte[] dataHash =
                 hashMessage(
                         jsonMessageObject.getPrimaryType(),
-                        (HashMap<String, Object>) jsonMessageObject.getMessage());
+                        (Map<String, Object>) jsonMessageObject.getMessage());
         return dataHash;
     }
 
     @SuppressWarnings("unchecked")
     public byte[] hashDomain() throws RuntimeException {
-        ObjectMapper oMapper = new ObjectMapper();
-        HashMap<String, Object> data =
-                oMapper.convertValue(jsonMessageObject.getDomain(), HashMap.class);
-
-        if (data.get("chainId") != null) {
-            data.put("chainId", ((HashMap<String, Object>) data.get("chainId")).get("value"));
-        } else {
-            data.remove("chainId");
-        }
-
-        if (data.get("verifyingContract") != null) {
-            data.put(
-                    "verifyingContract",
-                    ((HashMap<String, Object>) data.get("verifyingContract")).get("value"));
-        } else {
-            data.remove("verifyingContract");
-        }
-
-        if (data.get("salt") == null) {
-            data.remove("salt");
-        }
+        StructuredData.EIP712Domain domain = jsonMessageObject.getDomain();
+        HashMap<String, Object> data = new HashMap<>();
+        if (domain.getName() != null) data.put("name", domain.getName());
+        if (domain.getVersion() != null) data.put("version", domain.getVersion());
+        if (domain.getChainId() != null) data.put("chainId", domain.getChainId().getValue());
+        if (domain.getVerifyingContract() != null)
+            data.put("verifyingContract", domain.getVerifyingContract().getValue());
+        if (domain.getSalt() != null) data.put("salt", domain.getSalt());
         boolean hasTip712Domain = jsonMessageObject.getTypes().containsKey("TIP712Domain");
         return sha3(encodeData(hasTip712Domain ? "TIP712Domain" : "EIP712Domain", data));
     }
@@ -562,11 +578,17 @@ public class StructuredDataEncoder {
 
     public StructuredData.EIP712Message parseJSONMessage(String jsonMessageInString)
             throws IOException, RuntimeException {
-        ObjectMapper mapper = new ObjectMapper();
+        // LAZILY_PARSED_NUMBER preserves uint256 precision when dapps send numeric
+        // literals (e.g. {"amount": 115792089237316195423570985008687907853269984665640564039457584007913129639935})
+        // instead of strings — Long/Double would silently truncate.
+        Gson gson = new GsonBuilder()
+            .registerTypeAdapter(StructuredData.EIP712Domain.class, new EIP712DomainDeserializer())
+            .setObjectToNumberStrategy(ToNumberPolicy.LAZILY_PARSED_NUMBER)
+            .create();
 
         // convert JSON string to EIP712Message object
         StructuredData.EIP712Message tempJSONMessageObject =
-                mapper.readValue(jsonMessageInString, StructuredData.EIP712Message.class);
+                gson.fromJson(jsonMessageInString, StructuredData.EIP712Message.class);
         validateStructuredData(tempJSONMessageObject);
 
         return tempJSONMessageObject;
@@ -595,7 +617,7 @@ public class StructuredDataEncoder {
         byte[] dataHash =
                 hashMessage(
                         jsonMessageObject.getPrimaryType(),
-                        (HashMap<String, Object>) jsonMessageObject.getMessage());
+                        (Map<String, Object>) jsonMessageObject.getMessage());
         baos.write(dataHash, 0, dataHash.length);
 
         return baos.toByteArray();

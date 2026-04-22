@@ -12,9 +12,6 @@
  */
 package org.tron.common.crypto;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import org.tron.common.crypto.datatypes.Address;
 import org.tron.common.crypto.datatypes.generated.Uint256;
 
@@ -27,10 +24,7 @@ public class StructuredData {
         private final String name;
         private final String type;
 
-        @JsonCreator
-        public Entry(
-                @JsonProperty(value = "name") String name,
-                @JsonProperty(value = "type") String type) {
+        public Entry(String name, String type) {
             this.name = name;
             this.type = type;
         }
@@ -51,13 +45,7 @@ public class StructuredData {
         private final Address verifyingContract;
         private final String salt;
 
-        @JsonCreator
-        public EIP712Domain(
-                @JsonProperty(value = "name") String name,
-                @JsonProperty(value = "version") String version,
-                @JsonProperty(value = "chainId") String chainId,
-                @JsonProperty(value = "verifyingContract") Address verifyingContract,
-                @JsonProperty(value = "salt") String salt) {
+        public EIP712Domain(String name, String version, String chainId, Address verifyingContract, String salt) {
             this.name = name;
             this.version = version;
             this.chainId = chainId != null ? new Uint256(new BigInteger(chainId)) : null;
@@ -92,12 +80,7 @@ public class StructuredData {
         private final Object message;
         private final EIP712Domain domain;
 
-        @JsonCreator
-        public EIP712Message(
-                @JsonProperty(value = "types") HashMap<String, List<Entry>> types,
-                @JsonProperty(value = "primaryType") String primaryType,
-                @JsonProperty(value = "message") Object message,
-                @JsonProperty(value = "domain") EIP712Domain domain) {
+        public EIP712Message(HashMap<String, List<Entry>> types, String primaryType, Object message, EIP712Domain domain) {
             this.types = types;
             this.primaryType = primaryType;
             this.message = message;

@@ -1,7 +1,9 @@
 package org.tron.common.utils.abi;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.ToNumberPolicy;
+import com.google.gson.reflect.TypeToken;
 
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.util.encoders.Hex;
@@ -26,6 +28,12 @@ public class AbiUtil {
     private static Pattern paramTypeBytes = Pattern.compile("^bytes([0-9]*)$");
     private static Pattern paramTypeNumber = Pattern.compile("^(u?int)([0-9]*)$");
     private static Pattern paramTypeArray = Pattern.compile("^(.*)\\[([0-9]*)]$");
+
+    // LAZILY_PARSED_NUMBER keeps the raw JSON numeric literal so uint256 values
+    // survive toString() without Long/Double precision loss.
+    private static final Gson LIST_GSON = new GsonBuilder()
+        .setObjectToNumberStrategy(ToNumberPolicy.LAZILY_PARSED_NUMBER)
+        .create();
 
     static abstract class Coder {
         boolean dynamic = false;
@@ -122,9 +130,9 @@ public class AbiUtil {
 
             List strings;
             try {
-                ObjectMapper mapper = new ObjectMapper();
-                strings = mapper.readValue(arrayValues, List.class);
-            } catch (IOException e) {
+                strings = LIST_GSON.fromJson(arrayValues,
+                    new TypeToken<List<Object>>(){}.getType());
+            } catch (Exception e) {
                 LogUtils.e(e);
                 return null;
             }
@@ -184,9 +192,9 @@ public class AbiUtil {
 
             List strings;
             try {
-                ObjectMapper mapper = new ObjectMapper();
-                strings = mapper.readValue(arrayValues, List.class);
-            } catch (IOException e) {
+                strings = LIST_GSON.fromJson(arrayValues,
+                    new TypeToken<List<Object>>(){}.getType());
+            } catch (Exception e) {
                 LogUtils.e(e);
                 return null;
             }

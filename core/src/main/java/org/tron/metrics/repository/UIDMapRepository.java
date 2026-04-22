@@ -22,7 +22,6 @@ public class UIDMapRepository implements IUIDMapRepository {
         if (uIdMappingEntity == null) {
             String uuid = newUID();
             boolean b = insert(address, uuid);
-            LogUtils.i(TAG, "queryUIDByAddress:" + address + "+" + uuid);
             if (b) {
                 return uuid;
             } else {
@@ -30,7 +29,6 @@ public class UIDMapRepository implements IUIDMapRepository {
             }
         }
         String uId = uIdMappingEntity.getUId();
-        LogUtils.i(TAG, "queryUIDByAddress:" + address + "+" + uId);
         return uId;
     }
 
