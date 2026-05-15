@@ -47,8 +47,10 @@ public class KeyStoreUtils {
         final int P_STANDARD = 1;
 
         final int R = 8;
-        final int DKLEN = bytes.length;
-        byte[] salt = generateRandomBytes(bytes.length);
+        // Web3 Keystore v3 standard: fixed 32-byte DKLEN and salt.
+        // Variable lengths leaked the plaintext type (32=private key, 50-60=12-word mnemonic, etc.)
+        final int DKLEN = 32;
+        byte[] salt = generateRandomBytes(32);
 
         byte[] derivedKey = generateDerivedScryptKey(password.getBytes(UTF_8), salt, N_STANDARD, R, P_STANDARD, DKLEN);
 
@@ -177,7 +179,7 @@ public class KeyStoreUtils {
             int n, int p) {
         final String CIPHER = "aes-128-ctr";
         final String SCRYPT = "scrypt";
-        final int DKLEN = salt.length;
+        final int DKLEN = 32;
         final int CURRENT_VERSION = 3;
         final int R = 8;
         WalletFile walletFile = new WalletFile();
