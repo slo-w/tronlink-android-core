@@ -76,16 +76,32 @@ public class DataUploader {
             ReporterHttpApi api = createStatDataAPI();
 
             disposable = api.uploadStatData(requestBody).subscribeOn(Schedulers.io()).subscribe(statDataResponse -> {
-                if (statDataResponse != null && statDataResponse.getData() != null) {
-                    deleteCachedData(statDataResponse.getData().isTxt(), prepResult);
-                }
+                // Guard the entire onSuccess body: any exception thrown here would otherwise
+                // escape the RxJava chain (RxJava2 onNext exceptions go to RxJavaPlugins, not onError).
+                try {
+                    if (statDataResponse != null && statDataResponse.getData() != null) {
+                        deleteCachedData(statDataResponse.getData().isTxt(), prepResult);
+                    }
 
-                if (iUploadResultCallback != null) {
-                    iUploadResultCallback.onSuccess(statDataResponse);
+                    if (iUploadResultCallback != null) {
+                        iUploadResultCallback.onSuccess(statDataResponse);
+                    }
+                } catch (Throwable t) {
+                    LogUtils.e(TAG, "onSuccess handler failed: " + t.getMessage());
+                    if (iUploadResultCallback != null) {
+                        try {
+                            iUploadResultCallback.onFail(t);
+                        } catch (Throwable ignored) {
+                        }
+                    }
                 }
             }, throwable -> {
-                if (iUploadResultCallback != null) {
-                    iUploadResultCallback.onFail(throwable);
+                try {
+                    if (iUploadResultCallback != null) {
+                        iUploadResultCallback.onFail(throwable);
+                    }
+                } catch (Throwable t) {
+                    LogUtils.e(TAG, "onFail handler failed: " + t.getMessage());
                 }
             });
         } catch (Exception e) {
