@@ -1,5 +1,6 @@
 package org.tron.metrics.reporter;
 
+import org.tron.BuildConfig;
 import org.tron.common.utils.LogUtils;
 import org.tron.metrics.bean.StatDataRequest;
 import org.tron.metrics.repository.IBalanceRepository;
@@ -37,6 +38,9 @@ public class DataUploader {
                      boolean formatPlain,
                      OkHttpClient okHttpClient,
                      String baseUrl) {
+        if (baseUrl == null || (!baseUrl.startsWith("https://") && !BuildConfig.DEBUG)) {
+            throw new IllegalArgumentException("baseUrl must use https");
+        }
         this.balanceRepository = balanceRepository;
         this.transactionRepository = transactionCache;
         this.formatPlain = formatPlain;

@@ -34,17 +34,13 @@ public abstract class MetricsDatabase extends RoomDatabase {
 
     public static synchronized void init(Context context, String evn) {
         if (INSTANCE == null) {
-            synchronized (MetricsDatabase.class) {
-                if (INSTANCE == null) {
-                    INSTANCE = Room.databaseBuilder(
-                                    context.getApplicationContext(),
-                                    MetricsDatabase.class,
-                                    evn == null || evn.isEmpty() ? DB_NAME : evn + "_" + DB_NAME
-                            )
-                            .fallbackToDestructiveMigrationOnDowngrade(true)
-                            .build();
-                }
-            }
+            INSTANCE = Room.databaseBuilder(
+                            context.getApplicationContext(),
+                            MetricsDatabase.class,
+                            evn == null || evn.isEmpty() ? DB_NAME : evn + "_" + DB_NAME
+                    )
+                    .fallbackToDestructiveMigrationOnDowngrade(true)
+                    .build();
         }
     }
 

@@ -213,8 +213,11 @@ public class TriggerLoad {
         if (ArrayUtils.isEmpty(src) || start >= src.length || length < 0) {
             throw new OutputLengthException("data start:" + start + ", length:" + length);
         }
+        if (start + length > src.length) {
+            throw new OutputLengthException("not enough bytes");
+        }
         byte[] dst = new byte[length];
-        System.arraycopy(src, start, dst, 0, Math.min(length, src.length - start));
+        System.arraycopy(src, start, dst, 0, length);
         return dst;
     }
 
