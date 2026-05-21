@@ -1,5 +1,7 @@
 package org.tron.walletserver;
 
+import android.text.TextUtils;
+
 import org.tron.common.crypto.Hash;
 import org.tron.common.utils.Base58;
 import org.tron.common.utils.ByteArray;
@@ -164,16 +166,14 @@ public class AddressUtil {
      * @return
      */
     public static boolean isHexString(String hexString) {
+        if (TextUtils.isEmpty(hexString)) return false;
         String regex = "^[A-Fa-f0-9]+$";
-
         if (hexString.matches(regex)) {
             return true;
         } else {
             return false;
-
         }
     }
-
 
 
 }
