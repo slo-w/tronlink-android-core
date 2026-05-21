@@ -78,20 +78,32 @@ public class DataUploader {
             disposable = api.uploadStatData(requestBody).subscribeOn(Schedulers.io()).subscribe(statDataResponse -> {
                 // Guard the entire onSuccess body: any exception thrown here would otherwise
                 // escape the RxJava chain (RxJava2 onNext exceptions go to RxJavaPlugins, not onError).
+                boolean onSuccessInvoked = false;
                 try {
                     if (statDataResponse != null && statDataResponse.getData() != null) {
                         deleteCachedData(statDataResponse.getData().isTxt(), prepResult);
                     }
 
                     if (iUploadResultCallback != null) {
+                        onSuccessInvoked = true;
                         iUploadResultCallback.onSuccess(statDataResponse);
                     }
                 } catch (Throwable t) {
-                    LogUtils.e(TAG, "onSuccess handler failed: " + t.getMessage());
-                    if (iUploadResultCallback != null) {
+                    // Let VM-level Errors continue to propagate (OOM, StackOverflow, etc.)
+                    if (t instanceof Error) {
+                        throw (Error) t;
+                    }
+                    LogUtils.e("[" + TAG + "] onSuccess handler failed", t);
+                    // Only fall back to onFail if onSuccess has not been signalled yet —
+                    // otherwise the callback contract (success XOR fail) would be violated.
+                    if (!onSuccessInvoked && iUploadResultCallback != null) {
                         try {
                             iUploadResultCallback.onFail(t);
-                        } catch (Throwable ignored) {
+                        } catch (Throwable inner) {
+                            if (inner instanceof Error) {
+                                throw (Error) inner;
+                            }
+                            LogUtils.e("[" + TAG + "] fallback onFail also threw", inner);
                         }
                     }
                 }
@@ -101,7 +113,10 @@ public class DataUploader {
                         iUploadResultCallback.onFail(throwable);
                     }
                 } catch (Throwable t) {
-                    LogUtils.e(TAG, "onFail handler failed: " + t.getMessage());
+                    if (t instanceof Error) {
+                        throw (Error) t;
+                    }
+                    LogUtils.e("[" + TAG + "] onFail handler failed", t);
                 }
             });
         } catch (Exception e) {
