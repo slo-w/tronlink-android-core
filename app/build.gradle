@@ -39,6 +39,8 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    // ACCEPTED (Q-08): These outdated versions only affect the example app, not the published AAR.
+    // The app/ module's dependencies are excluded from the POM, so consumers are never constrained by them.
     //noinspection GradleCompatible
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'com.google.android.material:material:1.0.0'
