@@ -1,5 +1,6 @@
 package org.tron.metrics.reporter;
 
+import org.tron.common.utils.LogUtils;
 import org.tron.metrics.bean.StatDataRequest;
 import org.tron.metrics.utils.GsonUtils;
 import org.tron.metrics.utils.StatDataConverter;
@@ -18,6 +19,8 @@ import okio.Buffer;
  * Interceptor for data encryption using ts and signature from signed requests
  */
 public class DataFormatInterceptor implements Interceptor {
+    private static final String TAG = "DataFormatInterceptor";
+
     @Override
     public Response intercept(Chain chain) throws IOException {
         Request request = chain.request();
@@ -65,6 +68,8 @@ public class DataFormatInterceptor implements Interceptor {
                 encryptedStatRequest.setY(encryptedYData);
             }
         } catch (Exception e) {
+            LogUtils.e(TAG, "encrypt failed, fallback to original request: ts=" + ts
+                    + ", err=" + e.getMessage());
             return chain.proceed(request);
         }
 
