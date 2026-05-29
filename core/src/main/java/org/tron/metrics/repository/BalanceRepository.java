@@ -5,13 +5,9 @@ import org.tron.metrics.bean.BalanceCacheEntity;
 import org.tron.metrics.bean.EqualStatus;
 import org.tron.metrics.dao.BalanceCacheDao;
 import org.tron.metrics.dao.MetricsDatabase;
+import org.tron.metrics.utils.DayBucketPartitioner;
 
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class BalanceRepository implements IBalanceRepository {
     private BalanceCacheDao balanceCacheDao;
@@ -45,11 +41,13 @@ public class BalanceRepository implements IBalanceRepository {
         if (dbAllData == null || dbAllData.isEmpty()) {
             return;
         }
-        String dayNow = LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        List<BalanceCacheEntity> beforeDayList = dbAllData.stream().filter(entity -> !dayNow.equals(entity.getDay())).collect(Collectors.toList());
-        List<BalanceCacheEntity> nowDayList = list.stream().filter(entity -> dayNow.equals(entity.getDay())).collect(Collectors.toList());
+        DayBucketPartitioner.DayPartition<BalanceCacheEntity> partition =
+                DayBucketPartitioner.splitByDay(dbAllData, list, BalanceCacheEntity::getDay);
+        List<BalanceCacheEntity> beforeDayList = partition.getStaleEntries();
+        List<BalanceCacheEntity> nowDayList = partition.getCurrentDayEntries();
 
         if (!nowDayList.isEmpty()) {
+            String dayNow = partition.getDayNow();
             for (int i = 0; i < nowDayList.size(); i++) {
                 BalanceCacheEntity entity = nowDayList.get(i);
                 BalanceCacheEntity dbData = getCurrentDayData(dayNow, entity.getUId());
@@ -80,8 +78,9 @@ public class BalanceRepository implements IBalanceRepository {
 
     public EqualStatus equalData(BalanceCacheEntity dbData, String trxBalance, String usdtBalance) {
         if (dbData == null) return EqualStatus.Null;
-        if (Objects.equals(trxBalance, dbData.getTrxBalance())
-                && Objects.equals(usdtBalance, dbData.getUsdtBalance())) {
+        String dbTrxBalance = dbData.getTrxBalance();
+        String dbUsdtBalance = dbData.getUsdtBalance();
+        if (trxBalance.equals(dbTrxBalance) && usdtBalance.equals(dbUsdtBalance)) {
             return EqualStatus.HasSameData;
         }
         return EqualStatus.DifferentData;

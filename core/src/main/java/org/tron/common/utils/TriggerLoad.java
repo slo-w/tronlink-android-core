@@ -70,7 +70,7 @@ public class TriggerLoad {
             }
         } catch (UnsupportedOperationException e) {
             map.clear();
-            map.put(startIndex.toString(), Hex.toHexString(data));
+            map.put(String.valueOf(startIndex), Hex.toHexString(data));
         }
         return map;
     }
@@ -115,7 +115,7 @@ public class TriggerLoad {
                 }
             } catch (Exception e) {
                 map.clear();
-                map.put(startIndex.toString(), Hex.toHexString(data));
+                map.put(String.valueOf(startIndex), Hex.toHexString(data));
             }
             return map;
 

@@ -4,12 +4,9 @@ import org.tron.common.utils.LogUtils;
 import org.tron.metrics.bean.TransactionCacheEntity;
 import org.tron.metrics.dao.MetricsDatabase;
 import org.tron.metrics.dao.TransactionCacheDao;
+import org.tron.metrics.utils.DayBucketPartitioner;
 
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class TransactionRepository implements ITransactionRepository {
     private static final String TAG = "TransactionCacheController";
@@ -32,9 +29,10 @@ public class TransactionRepository implements ITransactionRepository {
         if (list == null || list.isEmpty()) return;
         List<TransactionCacheEntity> dbAllData = transactionCacheDao.getAll();
         if (dbAllData == null || dbAllData.isEmpty()) return;
-        String dayNow = LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        List<TransactionCacheEntity> beforeDayList = dbAllData.stream().filter(entity -> !dayNow.equals(entity.getDay())).collect(Collectors.toList());
-        List<TransactionCacheEntity> nowDayList = list.stream().filter(entity -> dayNow.equals(entity.getDay())).collect(Collectors.toList());
+        DayBucketPartitioner.DayPartition<TransactionCacheEntity> partition =
+                DayBucketPartitioner.splitByDay(dbAllData, list, TransactionCacheEntity::getDay);
+        List<TransactionCacheEntity> beforeDayList = partition.getStaleEntries();
+        List<TransactionCacheEntity> nowDayList = partition.getCurrentDayEntries();
 
         nowDayList.forEach(entity -> entity.setUpdated(false));
         LogUtils.i(TAG, "updateAndDeleteData:update:" + nowDayList.size());
