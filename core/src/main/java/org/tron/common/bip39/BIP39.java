@@ -33,6 +33,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class BIP39
 {
+    // ACCEPTED: Legacy non-HD wallet compatibility; not standard BIP39 seed derivation.
     public static byte[] decode (String mnemonic, String passphrase) throws ValidationException
     {
         StringTokenizer tokenizer = new StringTokenizer (mnemonic);

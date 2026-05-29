@@ -25,6 +25,10 @@ public class UIDMapRepository implements IUIDMapRepository {
             if (b) {
                 return uuid;
             } else {
+                // "Error" is a protocol-level sentinel agreed with the server:
+                // when local uid persistence fails, upload uId="Error" so the
+                // backend can identify and handle such records. Do not change
+                // this literal without coordinating with the server side.
                 return "Error";
             }
         }

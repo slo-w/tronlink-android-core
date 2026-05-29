@@ -43,11 +43,11 @@ public class TriggerLoad {
 
         // the first is the signature.
         List<ABI.Entry.Param> list = entry.getInputsList();
-        Integer startIndex = 0;
+        int startIndex = 0;
         try {
             // this one starts from the first position.
             int index = 0;
-            for (Integer i = 0; i < list.size(); ++i) {
+            for (int i = 0; i < list.size(); ++i) {
                 ABI.Entry.Param param = list.get(i);
                 if (param.getIndexed()) {
                     continue;
@@ -90,7 +90,7 @@ public class TriggerLoad {
 
 
             List<String> list = java.util.Arrays.asList(fun.split(","));
-            Integer startIndex = 0;
+            int startIndex = 0;
 
             if (list != null
                     && list.size() == 1
@@ -100,7 +100,7 @@ public class TriggerLoad {
             try {
                 // this one starts from the first position.
                 int index = 0;
-                for (Integer i = 0; i < list.size(); ++i) {
+                for (int i = 0; i < list.size(); ++i) {
 
                     if (startIndex == 0) {
                         startIndex = i;
@@ -213,8 +213,11 @@ public class TriggerLoad {
         if (ArrayUtils.isEmpty(src) || start >= src.length || length < 0) {
             throw new OutputLengthException("data start:" + start + ", length:" + length);
         }
+        if (start + length > src.length) {
+            throw new OutputLengthException("not enough bytes");
+        }
         byte[] dst = new byte[length];
-        System.arraycopy(src, start, dst, 0, Math.min(length, src.length - start));
+        System.arraycopy(src, start, dst, 0, length);
         return dst;
     }
 

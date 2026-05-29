@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class BalanceRepository implements IBalanceRepository {
@@ -79,9 +80,8 @@ public class BalanceRepository implements IBalanceRepository {
 
     public EqualStatus equalData(BalanceCacheEntity dbData, String trxBalance, String usdtBalance) {
         if (dbData == null) return EqualStatus.Null;
-        String dbTrxBalance = dbData.getTrxBalance();
-        String dbUsdtBalance = dbData.getUsdtBalance();
-        if (trxBalance.equals(dbTrxBalance) && usdtBalance.equals(dbUsdtBalance)) {
+        if (Objects.equals(trxBalance, dbData.getTrxBalance())
+                && Objects.equals(usdtBalance, dbData.getUsdtBalance())) {
             return EqualStatus.HasSameData;
         }
         return EqualStatus.DifferentData;
