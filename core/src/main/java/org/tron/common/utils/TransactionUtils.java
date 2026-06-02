@@ -256,14 +256,13 @@ public class TransactionUtils {
     public static Transaction sign(Transaction transaction, ECKey myKey) {
         Transaction.Builder transactionBuilderSigned = transaction.toBuilder();
         byte[] hash = sha256(transaction.getRawData().toByteArray());
-        List<Contract> listContract = transaction.getRawData().getContractList();
-        for (int i = 0; i < listContract.size(); i++) {
-            if (myKey != null) {
-                ECKey.ECDSASignature signature = myKey.sign(hash);
-                ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
-                transactionBuilderSigned.addSignature(
-                        bsSign);//Each contract may be signed with a different private key in the future.
-            }
+        // Sign the rawData hash once. Looping over the contract list signed the same hash with the
+        // same key repeatedly, producing duplicate signatures for multi-contract transactions.
+        if (myKey != null) {
+            ECKey.ECDSASignature signature = myKey.sign(hash);
+            ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
+            transactionBuilderSigned.addSignature(
+                    bsSign);//Each contract may be signed with a different private key in the future.
         }
 
         transaction = transactionBuilderSigned.build();
