@@ -143,13 +143,17 @@ public class CryptoUtils {
             return "";
         }
 
-        String[] parts = encryptedDataWithKey.split(SEPARATOR);
-        if (parts.length != 2) {
+        // The payload is "key:encryptedData" where both halves are NO_WRAP
+        // Base64 (whose alphabet never contains the separator). Split on the
+        // FIRST separator via indexOf so parsing is not coupled to how many
+        // separators the data happens to contain, unlike split(SEPARATOR).
+        int sepIndex = encryptedDataWithKey.indexOf(SEPARATOR);
+        if (sepIndex <= 0 || sepIndex >= encryptedDataWithKey.length() - SEPARATOR.length()) {
             return "";
         }
 
-        String key = parts[0];
-        String encryptedData = parts[1];
+        String key = encryptedDataWithKey.substring(0, sepIndex);
+        String encryptedData = encryptedDataWithKey.substring(sepIndex + SEPARATOR.length());
 
         return decryptInternal(encryptedData, key, null);
     }
