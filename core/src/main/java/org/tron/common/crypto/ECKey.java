@@ -772,8 +772,18 @@ public class ECKey implements Serializable, SignInterface {
     return sign(hash).toBase64();
   }
 
-  public byte[] Base64toBytes(String signature) {
-    byte[] signData = Base64.decode(signature);
+  public byte[] Base64toBytes(String signature) throws SignatureException {
+    byte[] signData;
+    try {
+      signData = Base64.decode(signature);
+    } catch (RuntimeException e) {
+      // Bouncy Castle throws an unchecked exception when base64 fails to decode.
+      throw new SignatureException("Could not decode base64", e);
+    }
+    if (signData.length < 65) {
+      throw new SignatureException(
+              "Signature truncated, expected 65 " + "bytes and got " + signData.length);
+    }
     byte first = (byte) (signData[0] - 27);
     byte[] temp = Arrays.copyOfRange(signData, 1, 65);
     return ByteUtil.appendByte(temp, first);
