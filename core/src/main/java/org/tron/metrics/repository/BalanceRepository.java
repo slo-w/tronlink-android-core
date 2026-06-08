@@ -8,6 +8,7 @@ import org.tron.metrics.dao.MetricsDatabase;
 import org.tron.metrics.utils.DayBucketPartitioner;
 
 import java.util.List;
+import java.util.Objects;
 
 public class BalanceRepository implements IBalanceRepository {
     private BalanceCacheDao balanceCacheDao;
@@ -80,7 +81,7 @@ public class BalanceRepository implements IBalanceRepository {
         if (dbData == null) return EqualStatus.Null;
         String dbTrxBalance = dbData.getTrxBalance();
         String dbUsdtBalance = dbData.getUsdtBalance();
-        if (trxBalance.equals(dbTrxBalance) && usdtBalance.equals(dbUsdtBalance)) {
+        if (Objects.equals(trxBalance, dbTrxBalance) && Objects.equals(usdtBalance, dbUsdtBalance)) {
             return EqualStatus.HasSameData;
         }
         return EqualStatus.DifferentData;

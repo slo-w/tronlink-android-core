@@ -162,6 +162,44 @@ public class AbiUtil {
         }
     }
 
+    // Returns whether an ABI type is dynamic (consistent with this file's paramTypeArray
+    // regex and tuple parsing).
+    private static boolean isDynamicType(String type) {
+        if (type == null) {
+            return false;
+        }
+        type = type.trim();
+        if (type.equals("string") || type.equals("bytes")) {
+            return true;
+        }
+        Matcher m = paramTypeArray.matcher(type);
+        if (m.find()) {
+            // An array without a fixed length is itself dynamic; a fixed-length array is
+            // dynamic when its element type is dynamic.
+            if (m.group(2).equals("")) {
+                return true;
+            }
+            return isDynamicType(m.group(1));
+        }
+        if (type.contains("tuple")) {
+            int start = type.indexOf('(') + 1;
+            int end = type.lastIndexOf(')');
+            if (start <= 0 || end < start) {
+                return false;
+            }
+            String inner = type.substring(start, end);
+            if (inner.isEmpty()) {
+                return false;
+            }
+            for (String t : inner.split(",")) {
+                if (isDynamicType(t)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     static class CoderTuple extends Coder {
         private String elementTypes;
         private List<String> elementTypeList = new ArrayList<>();
@@ -180,7 +218,16 @@ public class AbiUtil {
                     length = elementTypeList.size();
                 }
             }
+            // Per the ABI spec a tuple is dynamic if any member is dynamic (string/bytes/
+            // dynamic array/nested dynamic tuple); only then does the parent pack() encode it
+            // with a head/tail offset pointer, otherwise subsequent parameter offsets are wrong.
             this.dynamic = false;
+            for (String elementType : elementTypeList) {
+                if (isDynamicType(elementType)) {
+                    this.dynamic = true;
+                    break;
+                }
+            }
         }
 
         @Override
@@ -199,11 +246,9 @@ public class AbiUtil {
                 return null;
             }
 
-            if (this.length == -1) {
-                return ByteUtil.merge(new DataWord(strings.size()).getData(), pack(coders, strings));
-            } else {
-                return pack(coders, strings);
-            }
+            // A tuple carries no length prefix (unlike a dynamic array); its members' head/tail
+            // offsets are handled inside pack() according to each member's dynamic flag.
+            return pack(coders, strings);
         }
 
         @Override
