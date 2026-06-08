@@ -237,6 +237,8 @@ public class MnemonicUtils {
         return (byte) (bytes[0] & mask);
     }
 
+    // accepted (scan Q-12): WORD_LIST is an immutable list backed by a static array; a lazy-init
+    // race at worst rebuilds identical content with no correctness impact, so left as-is.
     private static List<String> populateWordList() {
         return Arrays.asList(BIP39.english);
     }

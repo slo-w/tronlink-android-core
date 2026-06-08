@@ -206,7 +206,10 @@ public class TriggerLoad {
     }
 
     private static Integer intValueExact(byte[] data) {
-        return new BigInteger(data).intValue();
+        // ABI offsets/lengths are non-negative; treat the word as unsigned and reject
+        // values that do not fit into an int instead of silently truncating. The thrown
+        // ArithmeticException is handled by the caller's catch block.
+        return new BigInteger(1, data).intValueExact();
     }
 
     private static byte[] subBytes(byte[] src, int start, int length) {

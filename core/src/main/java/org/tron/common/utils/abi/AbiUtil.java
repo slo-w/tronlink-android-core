@@ -547,20 +547,20 @@ public class AbiUtil {
 
 
     public static long decodeABI(String input) {
-        byte[] data;
-        data = Hex.decode(input);
-        if (data == null)
+        byte[] data = Hex.decode(input);
+        if (data == null) {
             data = ByteUtil.EMPTY_BYTE_ARRAY;
-        else if (data.length == 32)
-            data = data;
-        else if (data.length <= 32)
-            System.arraycopy(data, 0, data, 32 - data.length, data.length);
+        }
+        // Right-align the raw bytes into a 32-byte ABI word buffer.
+        byte[] word = new byte[32];
+        int copyLength = Math.min(data.length, 32);
+        System.arraycopy(data, data.length - copyLength, word, 32 - copyLength, copyLength);
+        // A long only holds 8 bytes; fold the low-order 8 bytes (big-endian) to avoid overflow.
         long longVal = 0;
-        for (byte aData : data) {
-            longVal = (longVal << 8) + (aData & 0xff);
+        for (int i = 24; i < 32; i++) {
+            longVal = (longVal << 8) + (word[i] & 0xff);
         }
         return longVal;
-
     }
 
 }
