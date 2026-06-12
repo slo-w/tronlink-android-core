@@ -533,7 +533,11 @@ public class TransactionUtils {
         try {
             Protocol.Block block = null;
 //            Protocol.Block block = TronAPI.getNowBlock();
-            setReference(transaction, block);
+            // No block source yet (getNowBlock disabled), skip reference/expiration to avoid NPE.
+            if (block == null) {
+                return setTimestamp(transaction, System.currentTimeMillis());
+            }
+            transaction = setReference(transaction, block);
             //temporary
             long TRANSACTION_DEFAULT_EXPIRATION_TIME = 60 * 1_000L; //60 seconds
             long expiration = block.getBlockHeader().getRawData().getTimestamp() + TRANSACTION_DEFAULT_EXPIRATION_TIME;
@@ -541,7 +545,7 @@ public class TransactionUtils {
             transaction = setExpiration(transaction, expiration);
 
         } catch (Exception e) {
-            LogUtils.i("Create transaction capsule failed." + e.getMessage());
+            LogUtils.e("Create transaction capsule failed." + e.getMessage());
         }
         return transaction;
     }
