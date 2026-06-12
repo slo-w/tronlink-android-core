@@ -1,5 +1,6 @@
 package org.tron.metrics.reporter;
 
+import org.tron.common.utils.LogUtils;
 import org.tron.metrics.bean.BalanceCacheEntity;
 import org.tron.metrics.bean.StatDataRequest;
 import org.tron.metrics.bean.StatXData;
@@ -41,7 +42,10 @@ public class DataPreparationManager {
             return new DataPreparationResult(request, hasData, balanceList, transactionList);
 
         } catch (Exception e) {
-            return new DataPreparationResult(new StatDataRequest(), false, null, null);
+            // Swallowing this silently made upload failures unobservable (e.g. Room's
+            // IllegalStateException when the host calls upload() on the main thread).
+            LogUtils.e("[DataPreparationManager] prepareUploadData failed", e);
+            return DataPreparationResult.failure();
         }
     }
 
@@ -74,16 +78,32 @@ public class DataPreparationManager {
     public static class DataPreparationResult {
         private final StatDataRequest request;
         private final boolean hasData;
+        private final boolean failed;
         private final List<BalanceCacheEntity> balanceList;
         private final List<TransactionCacheEntity> transactionList;
 
         public DataPreparationResult(StatDataRequest request, boolean hasData,
                                      List<BalanceCacheEntity> balanceList,
                                      List<TransactionCacheEntity> transactionList) {
+            this(request, hasData, false, balanceList, transactionList);
+        }
+
+        private DataPreparationResult(StatDataRequest request, boolean hasData, boolean failed,
+                                      List<BalanceCacheEntity> balanceList,
+                                      List<TransactionCacheEntity> transactionList) {
             this.request = request;
             this.hasData = hasData;
+            this.failed = failed;
             this.balanceList = balanceList;
             this.transactionList = transactionList;
+        }
+
+        static DataPreparationResult failure() {
+            return new DataPreparationResult(new StatDataRequest(), false, true, null, null);
+        }
+
+        public boolean isFailed() {
+            return failed;
         }
 
         public StatDataRequest getRequest() {

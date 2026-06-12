@@ -27,20 +27,11 @@ public class TransactionRepository implements ITransactionRepository {
     @Override
     public void updateAndDeleteData(List<TransactionCacheEntity> list) {
         if (list == null || list.isEmpty()) return;
-        List<TransactionCacheEntity> dbAllData = transactionCacheDao.getAll();
-        if (dbAllData == null || dbAllData.isEmpty()) return;
-        DayBucketPartitioner.DayPartition<TransactionCacheEntity> partition =
-                DayBucketPartitioner.splitByDay(dbAllData, list, TransactionCacheEntity::getDay);
-        List<TransactionCacheEntity> beforeDayList = partition.getStaleEntries();
-        List<TransactionCacheEntity> nowDayList = partition.getCurrentDayEntries();
-
-        nowDayList.forEach(entity -> entity.setUpdated(false));
-        LogUtils.i(TAG, "updateAndDeleteData:update:" + nowDayList.size());
-        LogUtils.i(TAG, "updateAndDeleteData:delete:" + beforeDayList.size());
-        transactionCacheDao.insertAll(nowDayList);
-        if (!beforeDayList.isEmpty()) {
-            transactionCacheDao.delete(beforeDayList);
-        }
+        // Confirm in a single transaction with in-place conditional updates.
+        // Upserting the pre-upload snapshot here would overwrite counters that
+        // insertData() accumulated during the network round-trip and lose them.
+        LogUtils.i(TAG, "updateAndDeleteData:confirm:" + list.size());
+        transactionCacheDao.confirmUploaded(list, DayBucketPartitioner.todayUtc());
     }
 
     @Override

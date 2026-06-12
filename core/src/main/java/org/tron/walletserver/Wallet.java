@@ -10,6 +10,7 @@ import org.tron.common.crypto.ECKey;
 import org.tron.common.crypto.MnemonicUtils;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.GsonFormatUtils;
+import org.tron.common.utils.LogUtils;
 import org.tron.common.utils.Utils;
 import org.tron.config.Parameter;
 
@@ -125,7 +126,13 @@ public class Wallet implements Comparable<Wallet> {
     public Wallet(I_TYPE I_Type, String key) {
         if (I_Type == I_TYPE.PRIVATE) {
             generateKeyForPrivateKey(key);
-            privateKeyBytes33 = ByteArray.fromHexString(key);
+            // Keep the raw key bytes only when derivation succeeded; otherwise a
+            // failed wallet (isOpen()==false) would still hold the invalid input,
+            // and non-hex input would crash in Hex.decode with an undeclared
+            // DecoderException.
+            if (mECKey != null) {
+                privateKeyBytes33 = ByteArray.fromHexString(key);
+            }
         } else if (I_Type == I_TYPE.MNEMONIC)
             generateKeyForMnemonic(key);
     }
@@ -159,13 +166,14 @@ public class Wallet implements Comparable<Wallet> {
 
     public void generateKeyForPrivateKey(String privateKey) {
 
-        if (privateKey != null && !privateKey.isEmpty()) {
+        if (privateKey != null && !privateKey.isEmpty() && AddressUtil.isHexString(privateKey)) {
             ECKey tempKey = null;
             try {
                 BigInteger priK = new BigInteger(privateKey, 16);
                 tempKey = ECKey.fromPrivate(priK);
             } catch (Exception ex) {
-                ex.printStackTrace();
+                // Keep failure logging minimal: record the exception type only.
+                LogUtils.e(TAG, "generateKeyForPrivateKey failed: " + ex.getClass().getSimpleName());
             }
             mECKey = tempKey;
         } else {
@@ -196,7 +204,8 @@ public class Wallet implements Comparable<Wallet> {
                 privateKeyBytes33 = bip44Keypair.getPrivateKeyBytes33();
                 tempKey = ECKey.fromPrivate(privateKeyBytes33);
             } catch (Exception ex) {
-                ex.printStackTrace();
+                // Keep failure logging minimal: record the exception type only.
+                LogUtils.e(TAG, "generateKeyForMnemonic failed: " + ex.getClass().getSimpleName());
             }
             mECKey = tempKey;
         } else {

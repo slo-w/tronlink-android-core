@@ -19,9 +19,12 @@
     <string name="wallet_keystore_key" translatable="false">wallet_keystore_key</string>
 
     <!--<string name="wallet_color_key">wallet_color_key</string>-->
-    <!--  3.0.0刘斌移除旧版本颜色记录 同key不同value-->
+    <!-- 3.0.0: legacy color records were dropped by switching to a new value
+         under the same resource name (same key, different stored value). -->
     <string name="wallet_color_key" translatable="false">wallet_color_new_key</string>
 
+    <!-- Do NOT remove the trailing '>': it is part of the persisted SharedPreferences
+         key. Fixing it would orphan stored data unless a one-off key migration ships. -->
     <string name="mnemonic_length" translatable="false">mnemonic_length></string>
 
     <string name="pub_key" translatable="false">pub_key</string>

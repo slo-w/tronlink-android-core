@@ -206,7 +206,7 @@ public class MnemonicUtils {
             final String word = tokenizer.nextToken();
             final int index = WORD_LIST.indexOf(word);
             if (index < 0) {
-                throw new IllegalArgumentException("Illegal word: " + word);
+                throw new IllegalArgumentException("Mnemonic contains a word not in the word list");
             }
             for (int k = 0; k < 11; k++) {
                 bits.set(bit++, isBitSet(index, 10 - k));

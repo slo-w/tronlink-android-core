@@ -53,21 +53,69 @@ public class DataUploader {
     }
 
     public void upload(IUploadResultCallback iUploadResultCallback) {
+        // Every terminal path must signal the callback, otherwise host retry logic
+        // driven by onSuccess/onFail hangs forever.
         if (this.okHttpClient == null || this.baseUrl == null) {
+            notifySkipped(iUploadResultCallback, "uploader not initialized");
             return;
         }
         long startTime = System.currentTimeMillis();
         try {
             DataPreparationManager.DataPreparationResult prepResult = DataPreparationManager.prepareUploadData(balanceRepository, transactionRepository);
 
+            if (prepResult.isFailed()) {
+                notifyFail(iUploadResultCallback, new IllegalStateException("data preparation failed"));
+                return;
+            }
             if (!prepResult.hasData()) {
                 LogUtils.i(TAG, "No data needs to be uploaded");
+                notifySkipped(iUploadResultCallback, "no data to upload");
                 return;
             }
 
             executeNetworkRequest(prepResult, startTime, iUploadResultCallback);
         } catch (Exception e) {
             LogUtils.e(TAG, "Data upload flow failed: " + e.getMessage());
+            notifyFail(iUploadResultCallback, e);
+        }
+    }
+
+    /**
+     * Disposes the in-flight upload subscription. Hosts should call this on
+     * logout/shutdown so late responses cannot reach a dead context.
+     */
+    public void release() {
+        if (disposable != null && !disposable.isDisposed()) {
+            disposable.dispose();
+        }
+        disposable = null;
+    }
+
+    private void notifySkipped(IUploadResultCallback callback, String reason) {
+        if (callback == null) {
+            return;
+        }
+        try {
+            callback.onSkipped(reason);
+        } catch (Throwable t) {
+            if (t instanceof Error) {
+                throw (Error) t;
+            }
+            LogUtils.e("[" + TAG + "] onSkipped handler failed", t);
+        }
+    }
+
+    private void notifyFail(IUploadResultCallback callback, Throwable cause) {
+        if (callback == null) {
+            return;
+        }
+        try {
+            callback.onFail(cause);
+        } catch (Throwable t) {
+            if (t instanceof Error) {
+                throw (Error) t;
+            }
+            LogUtils.e("[" + TAG + "] onFail handler failed", t);
         }
     }
 
@@ -79,6 +127,11 @@ public class DataUploader {
 
             ReporterHttpApi api = createStatDataAPI();
 
+            // Dispose the previous in-flight subscription before replacing it,
+            // otherwise rapid repeated upload() calls leak subscriptions.
+            if (disposable != null && !disposable.isDisposed()) {
+                disposable.dispose();
+            }
             disposable = api.uploadStatData(requestBody).subscribeOn(Schedulers.io()).subscribe(statDataResponse -> {
                 // Guard the entire onSuccess body: any exception thrown here would otherwise
                 // escape the RxJava chain (RxJava2 onNext exceptions go to RxJavaPlugins, not onError).
@@ -111,20 +164,10 @@ public class DataUploader {
                         }
                     }
                 }
-            }, throwable -> {
-                try {
-                    if (iUploadResultCallback != null) {
-                        iUploadResultCallback.onFail(throwable);
-                    }
-                } catch (Throwable t) {
-                    if (t instanceof Error) {
-                        throw (Error) t;
-                    }
-                    LogUtils.e("[" + TAG + "] onFail handler failed", t);
-                }
-            });
+            }, throwable -> notifyFail(iUploadResultCallback, throwable));
         } catch (Exception e) {
             LogUtils.e(TAG, "Network request exception: " + e.getMessage());
+            notifyFail(iUploadResultCallback, e);
         }
     }
 

@@ -69,6 +69,9 @@
     <string name="zh_teleurl_key" translatable="false">zh_teleurl_key</string>
     <string name="twitterurl_key" translatable="false">twitterurl_key</string>
     <string name="wechaturl_key" translatable="false">wechaturl_key</string>
+    <!-- Do NOT remove the trailing '>' from the values below: it is part of the
+         persisted SharedPreferences key. Fixing it would silently orphan all data
+         already stored under the old key; any cleanup requires a one-off key migration. -->
     <string name="is_first_vote_freeze_key" translatable="false">is_first_vote_freeze_key></string>
     <string name="update_version_key" translatable="false">update_version_key></string>
 
@@ -84,6 +87,7 @@
 
 
 
+    <!-- The trailing '>' below is part of the persisted key as well; see the note above. -->
     <string name="node_key" translatable="false">node_key></string>
     <string name="all_chain_key" translatable="false">all_chain_key></string>
     <string name="last_all_chain_key" translatable="false">last_all_chain_key></string>

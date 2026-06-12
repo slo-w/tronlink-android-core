@@ -254,16 +254,19 @@ public class TransactionUtils {
      * @return
      */
     public static Transaction sign(Transaction transaction, ECKey myKey) {
+        // Returning an unsigned transaction silently is indistinguishable from
+        // success for callers; fail fast like the chainId overload does.
+        if (myKey == null) {
+            throw new IllegalArgumentException("ECKey required for sign");
+        }
         Transaction.Builder transactionBuilderSigned = transaction.toBuilder();
         byte[] hash = sha256(transaction.getRawData().toByteArray());
         // Sign the rawData hash once. Looping over the contract list signed the same hash with the
         // same key repeatedly, producing duplicate signatures for multi-contract transactions.
-        if (myKey != null) {
-            ECKey.ECDSASignature signature = myKey.sign(hash);
-            ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
-            transactionBuilderSigned.addSignature(
-                    bsSign);//Each contract may be signed with a different private key in the future.
-        }
+        ECKey.ECDSASignature signature = myKey.sign(hash);
+        ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
+        transactionBuilderSigned.addSignature(
+                bsSign);//Each contract may be signed with a different private key in the future.
 
         transaction = transactionBuilderSigned.build();
         return transaction;
@@ -447,7 +450,7 @@ public class TransactionUtils {
         Transaction.Builder builder = transaction.toBuilder();
         Transaction.raw.Builder rowBuilder = transaction.getRawData()
                 .toBuilder();
-        if (timestamp != 0) rowBuilder.setTimestamp(currentTime);
+        rowBuilder.setTimestamp(timestamp != 0 ? timestamp : currentTime);
         builder.setRawData(rowBuilder.build());
         return builder.build();
     }
@@ -519,35 +522,6 @@ public class TransactionUtils {
         return Sha256Hash.of(mergedByte)
                 .getBytes();
     }
-
-    /*
-     *  create transaction
-     */
-    public static Transaction createTransactionCapsuleWithoutValidate(
-            com.google.protobuf.Message message,
-            Contract.ContractType contractType) {
-        Transaction.raw.Builder transactionBuilder = Transaction.raw.newBuilder().addContract(
-                Contract.newBuilder().setType(contractType).setParameter(
-                        Any.pack(message)).build());
-        Transaction transaction = Transaction.newBuilder().setRawData(transactionBuilder.build()).build();
-        try {
-            Protocol.Block block = null;
-//            Protocol.Block block = TronAPI.getNowBlock();
-            setReference(transaction, block);
-            //temporary
-            long TRANSACTION_DEFAULT_EXPIRATION_TIME = 60 * 1_000L; //60 seconds
-            long expiration = block.getBlockHeader().getRawData().getTimestamp() + TRANSACTION_DEFAULT_EXPIRATION_TIME;
-            transaction = setTimestamp(transaction, System.currentTimeMillis());
-            transaction = setExpiration(transaction, expiration);
-
-        } catch (Exception e) {
-            LogUtils.i("Create transaction capsule failed." + e.getMessage());
-        }
-        return transaction;
-    }
-
-
-
 
     public static Transaction addMemo(Transaction transaction, String memo) {
         if (AddressUtil.isEmpty(memo)) return transaction;

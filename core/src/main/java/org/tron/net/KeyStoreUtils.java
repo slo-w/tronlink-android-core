@@ -110,6 +110,25 @@ public class KeyStoreUtils {
             int n = scryptKdfParams.getN();
             int p = scryptKdfParams.getP();
             int r = scryptKdfParams.getR();
+            // KDF params come from untrusted keystore JSON: a huge N allocates
+            // 128*N*R bytes (OOM), and a non-power-of-two N makes SCrypt throw an
+            // undeclared IllegalArgumentException bypassing the CipherException contract.
+            if (n <= 1 || n > (1 << 20) || Integer.bitCount(n) != 1) {
+                throw new CipherException("Invalid scrypt n parameter");
+            }
+            if (r < 1 || r > 64) {
+                throw new CipherException("Invalid scrypt r parameter");
+            }
+            if (p < 1 || p > 16) {
+                throw new CipherException("Invalid scrypt p parameter");
+            }
+            // generateMac reads derivedKey[16..32), so anything below 32 is unusable.
+            if (dklen < 32 || dklen > 128) {
+                throw new CipherException("Invalid scrypt dklen parameter");
+            }
+            if (scryptKdfParams.getSalt() == null) {
+                throw new CipherException("Malformed keystore: missing scrypt salt");
+            }
             byte[] salt = ByteArray.fromHexString(scryptKdfParams.getSalt());
             derivedKey = generateDerivedScryptKey(password.getBytes(UTF_8), salt, n, r, p, dklen);
         } else if (kdfParams instanceof WalletFile.Aes128CtrKdfParams) {
@@ -117,6 +136,9 @@ public class KeyStoreUtils {
                     (WalletFile.Aes128CtrKdfParams) crypto.getKdfparams();
             int c = aes128CtrKdfParams.getC();
             String prf = aes128CtrKdfParams.getPrf();
+            if (aes128CtrKdfParams.getSalt() == null) {
+                throw new CipherException("Malformed keystore: missing pbkdf2 salt");
+            }
             byte[] salt = ByteArray.fromHexString(aes128CtrKdfParams.getSalt());
 
             derivedKey = generateAes128CtrDerivedKey(password.getBytes(UTF_8), salt, c, prf);
@@ -139,7 +161,7 @@ public class KeyStoreUtils {
     private static byte[] generateAes128CtrDerivedKey(
             byte[] password, byte[] salt, int c, String prf) throws CipherException {
 
-        if (!prf.equals("hmac-sha256")) {
+        if (!"hmac-sha256".equals(prf)) {
             throw new CipherException("Unsupported prf:" + prf);
         }
 
@@ -153,12 +175,28 @@ public class KeyStoreUtils {
 
 
     private static void validate(WalletFile walletFile) throws CipherException {
-        WalletFile.Crypto crypto = walletFile.getCrypto();
         final int CURRENT_VERSION = 3;
         final String CIPHER = "aes-128-ctr";
 
         final String AES_128_CTR = "pbkdf2";
         final String SCRYPT = "scrypt";
+
+        // Keystore JSON is user-pasted input: Gson may return null or leave any
+        // field null, which must surface as the declared CipherException, not NPE.
+        if (walletFile == null) {
+            throw new CipherException("Malformed keystore: empty content");
+        }
+        WalletFile.Crypto crypto = walletFile.getCrypto();
+        if (crypto == null
+                || crypto.getCipher() == null
+                || crypto.getKdf() == null
+                || crypto.getKdfparams() == null
+                || crypto.getCiphertext() == null
+                || crypto.getMac() == null
+                || crypto.getCipherparams() == null
+                || crypto.getCipherparams().getIv() == null) {
+            throw new CipherException("Malformed keystore: missing crypto fields");
+        }
 
         if (walletFile.getVersion() != CURRENT_VERSION) {
             throw new CipherException("Wallet version is not supported");

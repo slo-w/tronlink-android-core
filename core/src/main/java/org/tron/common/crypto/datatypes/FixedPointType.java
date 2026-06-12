@@ -44,7 +44,9 @@ public abstract class FixedPointType extends NumericType {
     }
 
     private static boolean isValidBitCount(int mBitSize, int nBitSize, BigInteger value) {
-        return value.bitCount() <= mBitSize + nBitSize;
+        // bitLength() is the numeric width; bitCount() only counts set bits and
+        // would accept arbitrarily large values such as 2^300.
+        return value.bitLength() <= mBitSize + nBitSize;
     }
 
     static BigInteger convert(BigInteger m, BigInteger n) {
@@ -54,6 +56,12 @@ public abstract class FixedPointType extends NumericType {
     static BigInteger convert(int mBitSize, int nBitSize, BigInteger m, BigInteger n) {
         BigInteger mPadded = m.shiftLeft(nBitSize);
         int nBitLength = n.bitLength();
+        if (nBitLength > nBitSize) {
+            // A wider n would turn the shift below negative (i.e. a silent right
+            // shift) and drop fractional bits.
+            throw new IllegalArgumentException(
+                    "Fractional part exceeds " + nBitSize + " bits: " + nBitLength);
+        }
 
         // find next multiple of 4
         int shift = (nBitLength + 3) & ~0x03;

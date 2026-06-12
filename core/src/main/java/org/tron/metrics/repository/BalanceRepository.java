@@ -38,30 +38,10 @@ public class BalanceRepository implements IBalanceRepository {
         if (list == null || list.isEmpty()) {
             return;
         }
-        List<BalanceCacheEntity> dbAllData = balanceCacheDao.getAll();
-        if (dbAllData == null || dbAllData.isEmpty()) {
-            return;
-        }
-        DayBucketPartitioner.DayPartition<BalanceCacheEntity> partition =
-                DayBucketPartitioner.splitByDay(dbAllData, list, BalanceCacheEntity::getDay);
-        List<BalanceCacheEntity> beforeDayList = partition.getStaleEntries();
-        List<BalanceCacheEntity> nowDayList = partition.getCurrentDayEntries();
-
-        if (!nowDayList.isEmpty()) {
-            String dayNow = partition.getDayNow();
-            for (int i = 0; i < nowDayList.size(); i++) {
-                BalanceCacheEntity entity = nowDayList.get(i);
-                BalanceCacheEntity dbData = getCurrentDayData(dayNow, entity.getUId());
-                EqualStatus equalStatus = equalData(dbData, entity.getTrxBalance(), entity.getUsdtBalance());
-                if (equalStatus == EqualStatus.HasSameData) {
-                    entity.setUpdated(false);
-                }
-            }
-        }
-        balanceCacheDao.insertAll(nowDayList);
-        if (!beforeDayList.isEmpty()) {
-            deleteData(beforeDayList);
-        }
+        // Confirm in a single transaction with in-place conditional updates.
+        // Upserting the pre-upload snapshot here would overwrite balances that
+        // changed during the network round-trip and re-upload stale values.
+        balanceCacheDao.confirmUploaded(list, DayBucketPartitioner.todayUtc());
     }
 
     /**

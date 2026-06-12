@@ -12,6 +12,7 @@
  */
 package org.tron.common.crypto.datatypes;
 
+import java.util.Arrays;
 import java.util.List;
 
 /** Dynamic array type. */
@@ -19,23 +20,26 @@ public class DynamicArray<T extends Type> extends Array<T> {
 
     @Deprecated
     @SafeVarargs
-    @SuppressWarnings({"unchecked"})
     public DynamicArray(T... values) {
-        super(
-                StructType.class.isAssignableFrom(values[0].getClass())
-                        ? (Class<T>) values[0].getClass()
-                        : (Class<T>) AbiTypes.getType(values[0].getTypeAsString()),
-                values);
+        super(inferElementType(Arrays.asList(values)), values);
     }
 
     @Deprecated
-    @SuppressWarnings("unchecked")
     public DynamicArray(List<T> values) {
-        super(
-                StructType.class.isAssignableFrom(values.get(0).getClass())
-                        ? (Class<T>) values.get(0).getClass()
-                        : (Class<T>) AbiTypes.getType(values.get(0).getTypeAsString()),
-                values);
+        super(inferElementType(values), values);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Type> Class<T> inferElementType(List<T> values) {
+        if (values == null || values.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Cannot infer the element type of an empty array; "
+                            + "use DynamicArray.empty(type) or the Class-based constructor");
+        }
+        T first = values.get(0);
+        return StructType.class.isAssignableFrom(first.getClass())
+                ? (Class<T>) first.getClass()
+                : (Class<T>) AbiTypes.getType(first.getTypeAsString());
     }
 
     @Deprecated

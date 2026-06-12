@@ -209,7 +209,13 @@ public class TriggerLoad {
         // ABI offsets/lengths are non-negative; treat the word as unsigned and reject
         // values that do not fit into an int instead of silently truncating. The thrown
         // ArithmeticException is handled by the caller's catch block.
-        return new BigInteger(1, data).intValueExact();
+        // BigInteger#intValueExact needs API 31; an unsigned value fits into an
+        // int exactly when its bit length is at most 31.
+        BigInteger value = new BigInteger(1, data);
+        if (value.bitLength() > 31) {
+            throw new ArithmeticException("BigInteger out of int range");
+        }
+        return value.intValue();
     }
 
     private static byte[] subBytes(byte[] src, int start, int length) {

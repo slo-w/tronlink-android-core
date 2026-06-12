@@ -366,6 +366,13 @@ public final class AbiTypes {
                 return Bytes32.class;
             default:
                 {
+                    // Type strings can originate from DApp/ABI input; only resolve
+                    // classes inside this datatypes package instead of letting
+                    // arbitrary classes be loaded and statically initialized.
+                    if (!type.startsWith(AbiTypes.class.getPackage().getName() + ".")) {
+                        throw new UnsupportedOperationException(
+                                "Unsupported type encountered: " + type);
+                    }
                     try {
                         return (Class<? extends Type>) Class.forName(type);
                     } catch (ClassNotFoundException e) {

@@ -25,7 +25,9 @@ public class Bool implements Type<Boolean> {
     }
 
     public Bool(Boolean value) {
-        this.value = value;
+        // This overload exists for nullable JSON/decoder mappings; unboxing a
+        // null directly would throw NPE.
+        this.value = Boolean.TRUE.equals(value);
     }
 
     @Override

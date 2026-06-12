@@ -146,7 +146,7 @@
                 android:paddingBottom="10dp"
                 android:text="@string/form_qr1"
                 android:textColor="@color/black_505"
-                android:textSize="14dp"
+                android:textSize="14sp"
                 android:visibility="gone" />
 
             <ImageView
@@ -218,7 +218,7 @@
             android:paddingVertical="3dp"
             android:text="@string/head_skip"
             android:textColor="@color/gray_232c41"
-            android:textSize="12dp"
+            android:textSize="12sp"
             android:visibility="gone" />
 
 
@@ -252,7 +252,7 @@
                 android:paddingLeft="7dp"
                 android:paddingRight="7dp"
                 android:textColor="@color/white"
-                android:textSize="12dp"
+                android:textSize="12sp"
                 android:visibility="visible" />
 
         </RelativeLayout>

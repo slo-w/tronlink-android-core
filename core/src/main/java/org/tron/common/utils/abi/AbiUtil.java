@@ -432,6 +432,14 @@ public class AbiUtil {
     }
 
     public static byte[] pack(List<Coder> codes, List<Object> values) {
+        // Both lists derive from DApp-supplied method signature and params; any
+        // mismatch must fail with a clear message instead of NPE/IndexOutOfBounds.
+        if (codes == null || values == null || codes.size() != values.size()) {
+            throw new IllegalArgumentException(
+                    "Parameter count does not match method signature: "
+                            + (codes == null ? 0 : codes.size()) + " type(s), "
+                            + (values == null ? 0 : values.size()) + " value(s)");
+        }
 
         int staticSize = 0;
         int dynamicSize = 0;
@@ -441,6 +449,10 @@ public class AbiUtil {
         for (int idx = 0; idx < codes.size(); idx++) {
             Coder coder = codes.get(idx);
             Object parameter = values.get(idx);
+            if (coder == null || parameter == null) {
+                throw new IllegalArgumentException(
+                        "Unsupported or missing parameter type at index " + idx);
+            }
             String value;
             if (parameter instanceof List) {
                 StringBuilder sb = new StringBuilder();
@@ -455,6 +467,10 @@ public class AbiUtil {
                 value = parameter.toString();
             }
             byte[] encoded = coder.encode(value);
+            if (encoded == null) {
+                throw new IllegalArgumentException(
+                        "Failed to encode parameter at index " + idx);
+            }
             encodedList.add(encoded);
 
             if (coder.dynamic) {
@@ -495,7 +511,6 @@ public class AbiUtil {
     public static String parseMethod(String methodSign, String input, boolean isHex) {
         byte[] selector = new byte[4];
         System.arraycopy(Hash.sha3(methodSign.getBytes()), 0, selector, 0, 4);
-        System.out.println(methodSign + ":" + Hex.toHexString(selector));
         if (input.length() == 0) {
             return Hex.toHexString(selector);
         }
