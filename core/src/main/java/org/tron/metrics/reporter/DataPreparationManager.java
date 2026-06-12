@@ -8,6 +8,7 @@ import org.tron.metrics.bean.TransactionCacheEntity;
 import org.tron.metrics.repository.IBalanceRepository;
 import org.tron.metrics.repository.ITransactionRepository;
 import org.tron.metrics.utils.StatDataConverter;
+import org.tron.common.utils.LogUtils;
 
 import java.util.List;
 
@@ -41,6 +42,7 @@ public class DataPreparationManager {
             return new DataPreparationResult(request, hasData, balanceList, transactionList);
 
         } catch (Exception e) {
+            LogUtils.e("DataPreparationManager prepareUploadData failed: " + e.getMessage());
             return new DataPreparationResult(new StatDataRequest(), false, null, null);
         }
     }
