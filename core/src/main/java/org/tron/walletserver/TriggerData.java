@@ -1,7 +1,6 @@
 package org.tron.walletserver;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,11 +35,24 @@ public class TriggerData {
      */
     private List<String> getMethodParamsList() {
         List<String> paramsList = new ArrayList<>();
-        if (AddressUtil.isEmpty(method) || !method.contains("(")) return paramsList;
-        String methodSub = method.substring(method.indexOf("(") + 1, method.indexOf(")"));
-        if (AddressUtil.isEmpty(methodSub) || methodSub.contains("(") || methodSub.contains(")"))
+        if (AddressUtil.isEmpty(method)) return paramsList;
+
+        int open = method.indexOf("(");
+        int close = method.indexOf(")");
+        // No parentheses or malformed order (e.g. ")(" ) -> no params, and avoids
+        // a StringIndexOutOfBounds from substring(begin > end).
+        if (open < 0 || close < open + 1) return paramsList;
+
+        String methodSub = method.substring(open + 1, close);
+        // No-arg method f(): the inner content is empty. Return an empty list
+        // rather than [""] (which split(",") would otherwise yield) so the
+        // parameter-count check in parseDataForTypeValueList stays correct.
+        if (methodSub.trim().isEmpty() || methodSub.contains("(") || methodSub.contains(")"))
             return paramsList;
-        paramsList = Arrays.asList(methodSub.split(","));
+
+        for (String param : methodSub.split(",")) {
+            paramsList.add(param.trim());
+        }
         return paramsList;
     }
 

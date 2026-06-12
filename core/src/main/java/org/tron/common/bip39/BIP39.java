@@ -57,6 +57,10 @@ public class BIP39
         while ( tokenizer.hasMoreElements () )
         {
             int c = Arrays.binarySearch (english, tokenizer.nextToken ());
+            if ( c < 0 )
+            {
+                throw new ValidationException ("invalid mnemonic word");
+            }
             for ( int j = 0; j < 11; ++j )
             {
                 bits[i++] = (c & (1 << (10 - j))) > 0;

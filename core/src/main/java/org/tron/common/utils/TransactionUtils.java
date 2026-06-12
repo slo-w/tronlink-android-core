@@ -523,6 +523,39 @@ public class TransactionUtils {
                 .getBytes();
     }
 
+    /*
+     *  create transaction
+     */
+    public static Transaction createTransactionCapsuleWithoutValidate(
+            com.google.protobuf.Message message,
+            Contract.ContractType contractType) {
+        Transaction.raw.Builder transactionBuilder = Transaction.raw.newBuilder().addContract(
+                Contract.newBuilder().setType(contractType).setParameter(
+                        Any.pack(message)).build());
+        Transaction transaction = Transaction.newBuilder().setRawData(transactionBuilder.build()).build();
+        try {
+            Protocol.Block block = null;
+//            Protocol.Block block = TronAPI.getNowBlock();
+            // No block source yet (getNowBlock disabled), skip reference/expiration to avoid NPE.
+            if (block == null) {
+                return setTimestamp(transaction, System.currentTimeMillis());
+            }
+            transaction = setReference(transaction, block);
+            //temporary
+            long TRANSACTION_DEFAULT_EXPIRATION_TIME = 60 * 1_000L; //60 seconds
+            long expiration = block.getBlockHeader().getRawData().getTimestamp() + TRANSACTION_DEFAULT_EXPIRATION_TIME;
+            transaction = setTimestamp(transaction, System.currentTimeMillis());
+            transaction = setExpiration(transaction, expiration);
+
+        } catch (Exception e) {
+            LogUtils.e("Create transaction capsule failed." + e.getMessage());
+        }
+        return transaction;
+    }
+
+
+
+
     public static Transaction addMemo(Transaction transaction, String memo) {
         if (AddressUtil.isEmpty(memo)) return transaction;
         if (transaction == null || transaction.toString().equals("")) return transaction;

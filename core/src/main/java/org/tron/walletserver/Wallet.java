@@ -164,7 +164,15 @@ public class Wallet implements Comparable<Wallet> {
         return mECKey != null ? mECKey.getPrivKeyBytes() : null;
     }
 
-    public void generateKeyForPrivateKey(String privateKey) {
+    /**
+     * Derives the EC key from a hex-encoded private key.
+     *
+     * @return {@code true} if a key was successfully derived; {@code false} when the
+     * input is empty/null or derivation fails. On failure {@code mECKey} is left null,
+     * so callers must check this result (or {@link #isOpen()}) before continuing a
+     * sensitive flow rather than assuming a key is present.
+     */
+    public boolean generateKeyForPrivateKey(String privateKey) {
 
         if (privateKey != null && !privateKey.isEmpty() && AddressUtil.isHexString(privateKey)) {
             ECKey tempKey = null;
@@ -176,14 +184,16 @@ public class Wallet implements Comparable<Wallet> {
                 LogUtils.e(TAG, "generateKeyForPrivateKey failed: " + ex.getClass().getSimpleName());
             }
             mECKey = tempKey;
+            return mECKey != null;
         } else {
             mECKey = null;
+            return false;
         }
     }
 
 
-    public void generateKeyForMnemonic(String mnemonic) {
-        generateKeyForMnemonic(mnemonic, 44, 195, 0, 0, 0);
+    public boolean generateKeyForMnemonic(String mnemonic) {
+        return generateKeyForMnemonic(mnemonic, 44, 195, 0, 0, 0);
     }
 
     /**
@@ -193,8 +203,12 @@ public class Wallet implements Comparable<Wallet> {
      * @param account      default 0
      * @param change       default 0
      * @param accountIndex default 0
+     * @return {@code true} if a key was successfully derived; {@code false} when the
+     * mnemonic is empty/null or derivation fails. On failure {@code mECKey} is left
+     * null, so callers must check this result (or {@link #isOpen()}) before continuing
+     * a sensitive flow rather than assuming a key is present.
      */
-    public void generateKeyForMnemonic(String mnemonic, int purpose, int coinType, int account, int change, int accountIndex) {
+    public boolean generateKeyForMnemonic(String mnemonic, int purpose, int coinType, int account, int change, int accountIndex) {
         if (mnemonic != null && !mnemonic.isEmpty()) {
             ECKey tempKey = null;
             try {
@@ -208,8 +222,10 @@ public class Wallet implements Comparable<Wallet> {
                 LogUtils.e(TAG, "generateKeyForMnemonic failed: " + ex.getClass().getSimpleName());
             }
             mECKey = tempKey;
+            return mECKey != null;
         } else {
             mECKey = null;
+            return false;
         }
     }
 
