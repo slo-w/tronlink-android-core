@@ -103,6 +103,12 @@ public class AddressUtil {
 
 
     public static String replace41Address(String address) {
+        if (address == null) {
+            // Fail fast on malformed input instead of throwing a bare NPE on
+            // startsWith below. Address callers (ABI/EIP-712 encoding) handle
+            // external input, so surface the error rather than silently continue.
+            throw new IllegalArgumentException("address must not be null");
+        }
         String unPreAddress = address;
         if (address.startsWith("T")) {
             unPreAddress = ByteArray.toHexString(AddressUtil.decode58Check((String) address));
