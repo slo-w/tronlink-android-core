@@ -114,7 +114,14 @@ public class AddressUtil {
         }
         String unPreAddress = address;
         if (address.startsWith("T")) {
-            unPreAddress = ByteArray.toHexString(AddressUtil.decode58Check((String) address));
+            byte[] decoded = AddressUtil.decode58Check(address);
+            if (decoded == null) {
+                // decode58Check returns null on a bad checksum/length. Fail fast
+                // instead of toHexString(null) producing an empty/garbage address
+                // that would flow into signing or transaction construction.
+                throw new IllegalArgumentException("invalid base58 address");
+            }
+            unPreAddress = ByteArray.toHexString(decoded);
 
             return unPreAddress.replaceFirst("41", "");
         } else if (address.startsWith("41")) {
