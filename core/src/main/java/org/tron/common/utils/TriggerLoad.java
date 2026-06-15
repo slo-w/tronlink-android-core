@@ -31,10 +31,6 @@ public class TriggerLoad {
         BYTES,
     }
 
-    private static void getTriggerData(String transactionId) {
-
-    }
-
     public static Map<String, String> parseTriggerData(byte[] data, ABI.Entry entry) {
         Map<String, String> map = new LinkedHashMap<>();
         if (ArrayUtils.isEmpty(data)) {
@@ -248,10 +244,5 @@ public class TriggerLoad {
             address = newAddress;
         }
         return address;
-    }
-
-    public static void main(String[] args) {
-        TriggerLoad data = new TriggerLoad();
-        TriggerLoad.getTriggerData("");
     }
 }
