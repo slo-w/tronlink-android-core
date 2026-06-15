@@ -232,7 +232,7 @@ public class TransactionUtils {
             }
             return owner.toByteArray();
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LogUtils.e(ex);
             return null;
         }
     }
@@ -256,6 +256,9 @@ public class TransactionUtils {
     public static Transaction sign(Transaction transaction, ECKey myKey) {
         // Returning an unsigned transaction silently is indistinguishable from
         // success for callers; fail fast like the chainId overload does.
+        if (transaction == null) {
+            throw new IllegalArgumentException("Transaction required for sign");
+        }
         if (myKey == null) {
             throw new IllegalArgumentException("ECKey required for sign");
         }
