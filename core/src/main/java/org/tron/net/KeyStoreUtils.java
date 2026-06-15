@@ -79,7 +79,14 @@ public class KeyStoreUtils {
 
     public static String getMnemonicWithKeyStore(String keyStore, String password) throws CipherException, IOException {
 
-        return new String(decryptToByte(password, WalletFile.createGson().fromJson(keyStore, WalletFile.class)));
+        byte[] mnemonicBytes = decryptToByte(password, WalletFile.createGson().fromJson(keyStore, WalletFile.class));
+        try {
+            return new String(mnemonicBytes);
+        } finally {
+            // Zero the decrypted plaintext copy once the String is built to
+            // shrink its residency window in the heap.
+            Arrays.fill(mnemonicBytes, (byte) 0);
+        }
     }
 
     private static ECKey decrypt(String password, WalletFile walletFile)
@@ -146,16 +153,25 @@ public class KeyStoreUtils {
             throw new CipherException("Unable to deserialize params: " + crypto.getKdf());
         }
 
-        byte[] derivedMac = generateMac(derivedKey, cipherText);
+        byte[] encryptKey = null;
+        try {
+            byte[] derivedMac = generateMac(derivedKey, cipherText);
 
-        if (!Arrays.equals(derivedMac, mac)) {
-            throw new CipherException("Invalid password provided");
+            if (!Arrays.equals(derivedMac, mac)) {
+                throw new CipherException("Invalid password provided");
+            }
+
+            encryptKey = Arrays.copyOfRange(derivedKey, 0, 16);
+            byte[] privateKey = performCipherOperation(Cipher.DECRYPT_MODE, iv, encryptKey, cipherText);
+            return privateKey;
+        } finally {
+            // Wipe the derived key material so it does not linger in the heap
+            // until GC. The returned plaintext is owned by the caller.
+            Arrays.fill(derivedKey, (byte) 0);
+            if (encryptKey != null) {
+                Arrays.fill(encryptKey, (byte) 0);
+            }
         }
-
-        byte[] encryptKey = Arrays.copyOfRange(derivedKey, 0, 16);
-        byte[] privateKey = performCipherOperation(Cipher.DECRYPT_MODE, iv, encryptKey, cipherText);
-        return privateKey;
-
     }
 
     private static byte[] generateAes128CtrDerivedKey(
