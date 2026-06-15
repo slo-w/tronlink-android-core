@@ -37,10 +37,32 @@ public class DataWord implements Comparable<DataWord> {
   /* Maximum value of the DataWord */
   public static final BigInteger _2_256 = BigInteger.valueOf(2).pow(256);
   public static final BigInteger MAX_VALUE = _2_256.subtract(BigInteger.ONE);
-  public static final DataWord ZERO = new DataWord(new byte[32]);
-  public static final DataWord ZERO_EMPTY_ARRAY = new DataWord(new byte[0]);
+  public static final DataWord ZERO = new DataWord(new byte[32]).asImmutable();
+  public static final DataWord ZERO_EMPTY_ARRAY = new DataWord(new byte[0]).asImmutable();
 
   private byte[] data = new byte[32];
+
+  /**
+   * Shared static constants (ZERO, ZERO_EMPTY_ARRAY) are exposed as public final
+   * instances, but every arithmetic/bitwise method mutates {@code this.data} in place.
+   * Marking the constants immutable makes any in-place mutation on them fail fast with
+   * {@link UnsupportedOperationException} instead of silently poisoning the global
+   * constant for every other caller. Normal (non-constant) instances are unaffected.
+   */
+  private boolean immutable = false;
+
+  private DataWord asImmutable() {
+    this.immutable = true;
+    return this;
+  }
+
+  private void checkMutable() {
+    if (immutable) {
+      throw new UnsupportedOperationException(
+          "Cannot mutate a shared immutable DataWord constant (e.g. DataWord.ZERO); "
+              + "operate on a copy instead");
+    }
+  }
 
   public DataWord() {
   }
@@ -206,6 +228,7 @@ public class DataWord implements Comparable<DataWord> {
    */
 
   public DataWord and(DataWord w2) {
+    checkMutable();
 
     for (int i = 0; i < this.data.length; ++i) {
       this.data[i] &= w2.data[i];
@@ -218,6 +241,7 @@ public class DataWord implements Comparable<DataWord> {
    */
 
   public DataWord or(DataWord w2) {
+    checkMutable();
 
     for (int i = 0; i < this.data.length; ++i) {
       this.data[i] |= w2.data[i];
@@ -230,6 +254,7 @@ public class DataWord implements Comparable<DataWord> {
    */
 
   public DataWord xor(DataWord w2) {
+    checkMutable();
 
     for (int i = 0; i < this.data.length; ++i) {
       this.data[i] ^= w2.data[i];
@@ -242,6 +267,7 @@ public class DataWord implements Comparable<DataWord> {
    */
 
   public void negate() {
+    checkMutable();
 
     if (this.isZero()) {
       return;
@@ -264,6 +290,7 @@ public class DataWord implements Comparable<DataWord> {
    */
 
   public void bnot() {
+    checkMutable();
     if (this.isZero()) {
       this.data = ByteUtil.copyToArray(MAX_VALUE);
       return;
@@ -278,6 +305,7 @@ public class DataWord implements Comparable<DataWord> {
   // By   : Holger
   // From : http://stackoverflow.com/a/24023466/459349
   public void add(DataWord word) {
+    checkMutable();
     byte[] result = new byte[32];
     for (int i = 31, overflow = 0; i >= 0; i--) {
       int v = (this.data[i] & 0xff) + (word.data[i] & 0xff) + overflow;
@@ -289,6 +317,7 @@ public class DataWord implements Comparable<DataWord> {
 
   // old add-method with BigInteger quick hack
   public void add2(DataWord word) {
+    checkMutable();
     BigInteger result = value().add(word.value());
     this.data = ByteUtil.copyToArray(result.and(MAX_VALUE));
   }
@@ -297,6 +326,7 @@ public class DataWord implements Comparable<DataWord> {
   // TODO:     with shift left shift right trick
   // TODO      without BigInteger quick hack
   public void mul(DataWord word) {
+    checkMutable();
     BigInteger result = value().multiply(word.value());
     this.data = ByteUtil.copyToArray(result.and(MAX_VALUE));
   }
@@ -307,6 +337,7 @@ public class DataWord implements Comparable<DataWord> {
 
   // TODO: improve with no BigInteger
   public void div(DataWord word) {
+    checkMutable();
 
     if (word.isZero()) {
       this.and(ZERO);
@@ -323,6 +354,7 @@ public class DataWord implements Comparable<DataWord> {
 
   // TODO: improve with no BigInteger
   public void ssDiv(DataWord word) {
+    checkMutable();
 
     if (word.isZero()) {
       this.and(ZERO);
@@ -335,12 +367,14 @@ public class DataWord implements Comparable<DataWord> {
 
   // TODO: improve with no BigInteger
   public void sub(DataWord word) {
+    checkMutable();
     BigInteger result = value().subtract(word.value());
     this.data = ByteUtil.copyToArray(result.and(MAX_VALUE));
   }
 
   // TODO: improve with no BigInteger
   public void exp(DataWord word) {
+    checkMutable();
     BigInteger result = value().modPow(word.value(), _2_256);
     this.data = ByteUtil.copyToArray(result);
   }
@@ -351,6 +385,7 @@ public class DataWord implements Comparable<DataWord> {
 
   // TODO: improve with no BigInteger
   public void mod(DataWord word) {
+    checkMutable();
 
     if (word.isZero()) {
       this.and(ZERO);
@@ -366,6 +401,7 @@ public class DataWord implements Comparable<DataWord> {
    */
 
   public void ssMod(DataWord word) {
+    checkMutable();
 
     if (word.isZero()) {
       this.and(ZERO);
@@ -383,6 +419,7 @@ public class DataWord implements Comparable<DataWord> {
    */
 
   public void addmod(DataWord word1, DataWord word2) {
+    checkMutable();
     if (word2.isZero()) {
       this.data = new byte[32];
       return;
@@ -397,6 +434,7 @@ public class DataWord implements Comparable<DataWord> {
    */
 
   public void mulmod(DataWord word1, DataWord word2) {
+    checkMutable();
 
     if (this.isZero() || word1.isZero() || word2.isZero()) {
       this.data = new byte[32];
@@ -476,6 +514,7 @@ public class DataWord implements Comparable<DataWord> {
    */
 
   public void signExtend(byte k) {
+    checkMutable();
     if (0 > k || k > 31) {
       throw new IndexOutOfBoundsException();
     }

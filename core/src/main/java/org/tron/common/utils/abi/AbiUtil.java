@@ -29,6 +29,12 @@ public class AbiUtil {
     private static Pattern paramTypeNumber = Pattern.compile("^(u?int)([0-9]*)$");
     private static Pattern paramTypeArray = Pattern.compile("^(.*)\\[([0-9]*)]$");
 
+    // Upper bound for fixed-size ABI array length taken from a (DApp-supplied) method
+    // signature. Without it a signature like uint256[2000000000] makes CoderArray.encode
+    // allocate billions of coders, exhausting memory (local DoS). Real contract calls use
+    // small fixed arrays, so 1024 is a generous ceiling.
+    private static final int MAX_FIXED_ARRAY_LENGTH = 1024;
+
     // LAZILY_PARSED_NUMBER keeps the raw JSON numeric literal so uint256 values
     // survive toString() without Long/Double precision loss.
     private static final Gson LIST_GSON = new GsonBuilder()
@@ -104,6 +110,11 @@ public class AbiUtil {
             int length = -1;
             if (!m.group(2).equals("")) {
                 length = Integer.valueOf(m.group(2));
+                if (length > MAX_FIXED_ARRAY_LENGTH) {
+                    throw new IllegalArgumentException(
+                        "ABI fixed array length " + length + " exceeds limit "
+                            + MAX_FIXED_ARRAY_LENGTH);
+                }
             }
             return new CoderArray(arrayType, length);
         }

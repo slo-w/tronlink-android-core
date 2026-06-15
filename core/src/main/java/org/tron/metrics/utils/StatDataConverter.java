@@ -3,6 +3,7 @@ package org.tron.metrics.utils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import org.tron.common.utils.LogUtils;
 import org.tron.metrics.bean.BalanceCacheEntity;
 import org.tron.metrics.bean.StatXData;
 import org.tron.metrics.bean.StatYData;
@@ -122,12 +123,16 @@ public class StatDataConverter {
         try {
             String keyBase64 = CryptoUtils.generateKeyFromTs(ts, signature);
             if (keyBase64 == null) {
+                LogUtils.e(TAG, "encryptDataWithTs failed: key derivation returned null");
                 return "";
             }
 
             String encryptedData = CryptoUtils.encrypt(data, keyBase64);
             return encryptedData;
         } catch (Exception e) {
+            // Log the root cause (never the cleartext data); upstream treats "" as an
+            // encryption failure and aborts the upload, so no cleartext is leaked.
+            LogUtils.e(TAG, "encryptDataWithTs failed: " + e.getMessage());
             return "";
         }
     }
