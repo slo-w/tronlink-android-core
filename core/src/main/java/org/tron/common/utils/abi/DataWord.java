@@ -98,6 +98,10 @@ public class DataWord implements Comparable<DataWord> {
     if (data == null) {
       this.data = ByteUtil.EMPTY_BYTE_ARRAY;
     } else if (data.length == 32) {
+      // Scan note (accepted): shares the backing array by design (inherited
+      // ethereumJ behavior). All in-repo callers treat it as read-only, so no
+      // defensive copy here or in getData(); avoids per-call alloc on the
+      // ABI-encoding hot path.
       this.data = data;
     } else if (data.length <= 32) {
       System.arraycopy(data, 0, this.data, 32 - data.length, data.length);
