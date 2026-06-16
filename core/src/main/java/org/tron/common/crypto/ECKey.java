@@ -440,6 +440,12 @@ public class ECKey implements Serializable, SignInterface {
     if (header < 27 || header > 34) {
       throw new SignatureException("Header byte out of range: " + header);
     }
+    // S-04: enforce low-s (canonical) on the recovery path to reject signature
+    // malleability. The generation side canonicalises s; recovery did not, so both
+    // (r, s) and (r, N-s) verified to the same recovered key/address.
+    if (sig.s.compareTo(HALF_CURVE_ORDER) > 0) {
+      throw new SignatureException("s must be low-s (canonical); rejecting malleable signature");
+    }
     if (header >= 31) {
       header -= 4;
     }

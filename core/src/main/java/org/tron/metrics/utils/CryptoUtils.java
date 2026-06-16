@@ -162,6 +162,7 @@ public class CryptoUtils {
         return decryptInternal(encryptedData, key, null);
     }
 
+    // accepted: Q-04 unreachable dead code (no callers; client only encrypts), metrics-only decryption, not a tx-signing path
     public static String decryptWithTsAndSignature(String encryptedData, String ts, String signature) {
         if (encryptedData == null || encryptedData.isEmpty() ||
                 ts == null || ts.isEmpty() ||

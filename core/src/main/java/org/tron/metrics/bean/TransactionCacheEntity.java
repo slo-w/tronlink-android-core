@@ -49,7 +49,7 @@ public class TransactionCacheEntity {
 
     @Override
     public String toString() {
-        return "YourEntity{" +
+        return "TransactionCacheEntity{" +
                 "id=" + id +
                 ", uId='" + uId + '\'' +
                 ", idType=" + idType +

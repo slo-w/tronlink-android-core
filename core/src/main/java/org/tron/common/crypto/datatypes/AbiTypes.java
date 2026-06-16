@@ -374,7 +374,12 @@ public final class AbiTypes {
                                 "Unsupported type encountered: " + type);
                     }
                     try {
-                        return (Class<? extends Type>) Class.forName(type);
+                        Class<?> c = Class.forName(type);
+                        if (!Type.class.isAssignableFrom(c)) {
+                            throw new UnsupportedOperationException(
+                                    "Unsupported type encountered: " + type);
+                        }
+                        return (Class<? extends Type>) c;
                     } catch (ClassNotFoundException e) {
                         throw new UnsupportedOperationException(
                                 "Unsupported type encountered: " + type);

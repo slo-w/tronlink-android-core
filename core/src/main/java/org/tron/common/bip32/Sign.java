@@ -260,6 +260,13 @@ public class Sign {
                 new BigInteger(1, signatureData.getR()),
                 new BigInteger(1, signatureData.getS()));
 
+        // S-04: enforce low-s (canonical) on the recovery path to reject signature
+        // malleability. The generation side already canonicalises s; recovery did not,
+        // so (r, s) and (r, N-s) both verified. Recovered address is unchanged either way.
+        if (sig.s.compareTo(HALF_CURVE_ORDER) > 0) {
+            throw new SignatureException("s must be low-s (canonical); rejecting malleable signature");
+        }
+
         int recId = header - 27;
         BigInteger key = recoverFromSignature(recId, sig, messageHash);
         if (key == null) {
