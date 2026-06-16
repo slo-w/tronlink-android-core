@@ -61,6 +61,9 @@ public class DataUploader {
         }
         long startTime = System.currentTimeMillis();
         try {
+            // accepted: Q-11 prepareUploadData runs on the caller thread by design; hosts
+            // are expected to invoke upload() off the main thread, and Room guards main-thread
+            // access via IllegalStateException (caught and logged in DataPreparationManager).
             DataPreparationManager.DataPreparationResult prepResult = DataPreparationManager.prepareUploadData(balanceRepository, transactionRepository);
 
             if (prepResult.isFailed()) {

@@ -5,6 +5,7 @@ import android.text.TextUtils;
 import org.tron.common.crypto.Hash;
 import org.tron.common.utils.Base58;
 import org.tron.common.utils.ByteArray;
+import org.tron.common.utils.LogUtils;
 import org.tron.common.utils.Sha256Hash;
 import org.tron.config.Parameter;
 
@@ -13,6 +14,8 @@ import org.tron.config.Parameter;
  */
 public class AddressUtil {
     public static final String EMPTY_STRING = "";
+
+    private static final String TAG = "AddressUtil";
 
     /**
      * Determine if it is empty
@@ -140,7 +143,10 @@ public class AddressUtil {
             }
             return null;
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
+            // Only IllegalArgumentException is treated as "invalid Base58 input" and
+            // mapped to null. Other RuntimeExceptions are intentionally left to
+            // propagate so callers do not silently consume an unexpected failure.
+            LogUtils.e(TAG, "decode58Check failed for invalid Base58 input: " + e.getMessage());
             return null;
         }
     }

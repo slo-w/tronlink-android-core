@@ -48,6 +48,10 @@ public class Sign {
         return Hash.sha3(result);
     }
 
+    // accepted: S-04 V1 keeps the fixed length-32 prefix on purpose; this is the legacy
+    // personal_sign behavior callers explicitly opt into (V2 below uses the real length).
+    // The hash produced here is what gets signed, so changing the prefix would alter
+    // signatures and break compatibility with already-signed messages. Left as-is.
     static byte[] getEthereumMessageHash(byte[] message) {
         byte[] prefix = getEthereumMessagePrefix(32);
         return getEthereumMessageHash(message, prefix);

@@ -87,6 +87,11 @@ public class TriggerData {
         for (int i = 0; i < methodParamsList.size(); i++) {
             TypeValue typeValue = new TypeValue();
             String type = String.valueOf(methodParamsList.get(i));
+            // accepted: Q-07 the literal "null" cannot actually occur here. The size guard
+            // above only lets us in when keys are the contiguous "0".."N-1" (any skipped
+            // param shrinks the map and trips the size check), and TriggerLoad.parseDataBytes
+            // never returns null (it returns a non-null string or throws, and the throw paths
+            // store a non-null hex string). Defensive-only finding; left unchanged.
             String value = String.valueOf(parameterMapOld.get(String.valueOf(i)));
             typeValue.setType(type);
             typeValue.setValue(value);
