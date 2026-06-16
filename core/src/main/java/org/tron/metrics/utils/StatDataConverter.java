@@ -156,6 +156,9 @@ public class StatDataConverter {
                                                           .map(entry -> entry.getKey() + ":" + entry.getValue())
                                                           .toArray(String[]::new));
         } catch (Exception e) {
+            // Malformed distribution JSON: log the root cause so dropped data is traceable,
+            // then degrade to an empty field (consistent with encryptDataWithTs handling).
+            LogUtils.e(TAG, "formatDistribution failed: " + e.getMessage());
             return "";
         }
     }

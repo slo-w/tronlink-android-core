@@ -268,7 +268,16 @@ public class Sign {
         }
 
         int recId = header - 27;
-        BigInteger key = recoverFromSignature(recId, sig, messageHash);
+        // For headers in the upper half of the 27..34 range recId/2 can exceed the valid
+        // secp256k1 range, making decompressKey's decodePoint throw an undeclared
+        // IllegalArgumentException (or ArithmeticException from modInverse). Map those to the
+        // declared SignatureException so callers see a single, expected failure type.
+        BigInteger key;
+        try {
+            key = recoverFromSignature(recId, sig, messageHash);
+        } catch (IllegalArgumentException | ArithmeticException e) {
+            throw new SignatureException("Could not recover public key from signature", e);
+        }
         if (key == null) {
             throw new SignatureException("Could not recover public key from signature");
         }
