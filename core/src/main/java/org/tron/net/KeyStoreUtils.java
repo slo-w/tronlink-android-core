@@ -143,6 +143,12 @@ public class KeyStoreUtils {
                     (WalletFile.Aes128CtrKdfParams) crypto.getKdfparams();
             int c = aes128CtrKdfParams.getC();
             String prf = aes128CtrKdfParams.getPrf();
+            // PBKDF2 iteration count comes from untrusted keystore JSON. A tiny c (e.g. 0/1)
+            // makes password derivation nearly free, weakening offline brute-force resistance;
+            // an excessive c causes a local DoS. Mirror the scrypt branch's parameter bounds.
+            if (c < 10000 || c > (1 << 24)) {
+                throw new CipherException("Invalid pbkdf2 c parameter");
+            }
             if (aes128CtrKdfParams.getSalt() == null) {
                 throw new CipherException("Malformed keystore: missing pbkdf2 salt");
             }
