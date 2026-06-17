@@ -369,6 +369,9 @@ public class TransactionUtils {
      * @return
      */
     public static String enCodeSignature(byte[] signature) {
+        if (signature == null || signature.length < 65) {
+            throw new IllegalArgumentException("signature must be >= 65 bytes");
+        }
         byte[] r = new byte[32];
         byte[] s = new byte[32];
         byte v = signature[64];
