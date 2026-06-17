@@ -238,6 +238,7 @@ public class TransactionUtils {
     }
 
     public static String getBase64FromByteString(ByteString sign) {
+        // Expects a 65-byte signature: r (0..32) | s (32..64) | v (64).
         byte[] r = sign.substring(0, 32).toByteArray();
         byte[] s = sign.substring(32, 64).toByteArray();
         byte v = sign.byteAt(64);

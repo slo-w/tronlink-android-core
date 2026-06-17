@@ -129,6 +129,7 @@ public class AddressUtil {
         } else if (address.startsWith("0x")) {
             return unPreAddress.replaceFirst("0x", "");
         }
+        // No recognized prefix: assume the input is already raw hex and return as-is.
         return unPreAddress;
     }
 
