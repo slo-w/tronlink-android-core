@@ -31,10 +31,6 @@ public class TriggerLoad {
         BYTES,
     }
 
-    private static void getTriggerData(String transactionId) {
-
-    }
-
     public static Map<String, String> parseTriggerData(byte[] data, ABI.Entry entry) {
         Map<String, String> map = new LinkedHashMap<>();
         if (ArrayUtils.isEmpty(data)) {
@@ -43,11 +39,11 @@ public class TriggerLoad {
 
         // the first is the signature.
         List<ABI.Entry.Param> list = entry.getInputsList();
-        Integer startIndex = 0;
+        int startIndex = 0;
         try {
             // this one starts from the first position.
             int index = 0;
-            for (Integer i = 0; i < list.size(); ++i) {
+            for (int i = 0; i < list.size(); ++i) {
                 ABI.Entry.Param param = list.get(i);
                 if (param.getIndexed()) {
                     continue;
@@ -70,7 +66,7 @@ public class TriggerLoad {
             }
         } catch (UnsupportedOperationException e) {
             map.clear();
-            map.put(startIndex.toString(), Hex.toHexString(data));
+            map.put(String.valueOf(startIndex), Hex.toHexString(data));
         }
         return map;
     }
@@ -90,7 +86,7 @@ public class TriggerLoad {
 
 
             List<String> list = java.util.Arrays.asList(fun.split(","));
-            Integer startIndex = 0;
+            int startIndex = 0;
 
             if (list != null
                     && list.size() == 1
@@ -100,7 +96,7 @@ public class TriggerLoad {
             try {
                 // this one starts from the first position.
                 int index = 0;
-                for (Integer i = 0; i < list.size(); ++i) {
+                for (int i = 0; i < list.size(); ++i) {
 
                     if (startIndex == 0) {
                         startIndex = i;
@@ -115,7 +111,7 @@ public class TriggerLoad {
                 }
             } catch (Exception e) {
                 map.clear();
-                map.put(startIndex.toString(), Hex.toHexString(data));
+                map.put(String.valueOf(startIndex), Hex.toHexString(data));
             }
             return map;
 
@@ -206,15 +202,27 @@ public class TriggerLoad {
     }
 
     private static Integer intValueExact(byte[] data) {
-        return new BigInteger(data).intValue();
+        // ABI offsets/lengths are non-negative; treat the word as unsigned and reject
+        // values that do not fit into an int instead of silently truncating. The thrown
+        // ArithmeticException is handled by the caller's catch block.
+        // BigInteger#intValueExact needs API 31; an unsigned value fits into an
+        // int exactly when its bit length is at most 31.
+        BigInteger value = new BigInteger(1, data);
+        if (value.bitLength() > 31) {
+            throw new ArithmeticException("BigInteger out of int range");
+        }
+        return value.intValue();
     }
 
     private static byte[] subBytes(byte[] src, int start, int length) {
         if (ArrayUtils.isEmpty(src) || start >= src.length || length < 0) {
             throw new OutputLengthException("data start:" + start + ", length:" + length);
         }
+        if (start + length > src.length) {
+            throw new OutputLengthException("not enough bytes");
+        }
         byte[] dst = new byte[length];
-        System.arraycopy(src, start, dst, 0, Math.min(length, src.length - start));
+        System.arraycopy(src, start, dst, 0, length);
         return dst;
     }
 
@@ -236,10 +244,5 @@ public class TriggerLoad {
             address = newAddress;
         }
         return address;
-    }
-
-    public static void main(String[] args) {
-        TriggerLoad data = new TriggerLoad();
-        TriggerLoad.getTriggerData("");
     }
 }

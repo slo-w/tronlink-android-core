@@ -44,7 +44,7 @@
                 android:layout_marginTop="10dp"
                 android:text="@string/loading2"
                 android:textColor="@color/white"
-                android:textSize="16dp" />
+                android:textSize="16sp" />
         </LinearLayout>
     </RelativeLayout>
 
@@ -80,7 +80,7 @@
                 android:gravity="center"
                 android:text="@string/net_error"
                 android:textColor="@color/gray_C2"
-                android:textSize="16dp" />
+                android:textSize="16sp" />
 
 
             <RelativeLayout
@@ -99,7 +99,7 @@
                     android:gravity="center"
                     android:text="@string/reload"
                     android:textColor="@color/black_02_30"
-                    android:textSize="14dp"
+                    android:textSize="14sp"
                     android:visibility="visible" />
 
                 <ImageView

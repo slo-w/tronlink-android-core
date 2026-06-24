@@ -48,6 +48,10 @@ public class Sign {
         return Hash.sha3(result);
     }
 
+    // accepted: S-04 V1 keeps the fixed length-32 prefix on purpose; this is the legacy
+    // personal_sign behavior callers explicitly opt into (V2 below uses the real length).
+    // The hash produced here is what gets signed, so changing the prefix would alter
+    // signatures and break compatibility with already-signed messages. Left as-is.
     static byte[] getEthereumMessageHash(byte[] message) {
         byte[] prefix = getEthereumMessagePrefix(32);
         return getEthereumMessageHash(message, prefix);
@@ -256,8 +260,24 @@ public class Sign {
                 new BigInteger(1, signatureData.getR()),
                 new BigInteger(1, signatureData.getS()));
 
+        // S-04: enforce low-s (canonical) on the recovery path to reject signature
+        // malleability. The generation side already canonicalises s; recovery did not,
+        // so (r, s) and (r, N-s) both verified. Recovered address is unchanged either way.
+        if (sig.s.compareTo(HALF_CURVE_ORDER) > 0) {
+            throw new SignatureException("s must be low-s (canonical); rejecting malleable signature");
+        }
+
         int recId = header - 27;
-        BigInteger key = recoverFromSignature(recId, sig, messageHash);
+        // For headers in the upper half of the 27..34 range recId/2 can exceed the valid
+        // secp256k1 range, making decompressKey's decodePoint throw an undeclared
+        // IllegalArgumentException (or ArithmeticException from modInverse). Map those to the
+        // declared SignatureException so callers see a single, expected failure type.
+        BigInteger key;
+        try {
+            key = recoverFromSignature(recId, sig, messageHash);
+        } catch (IllegalArgumentException | ArithmeticException e) {
+            throw new SignatureException("Could not recover public key from signature", e);
+        }
         if (key == null) {
             throw new SignatureException("Could not recover public key from signature");
         }

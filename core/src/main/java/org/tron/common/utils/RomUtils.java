@@ -63,9 +63,9 @@ public class RomUtils {
     private static final String KEY_MIUI_VERSION_CODE = "ro.miui.ui.version.code";
 
     private static boolean isMiUIV6OrAbove() {
-        try {
+        try (FileInputStream fis = new FileInputStream(new File(Environment.getRootDirectory(), "build.prop"))) {
             final Properties properties = new Properties();
-            properties.load(new FileInputStream(new File(Environment.getRootDirectory(), "build.prop")));
+            properties.load(fis);
             String uiCode = properties.getProperty(KEY_MIUI_VERSION_CODE, null);
             if (uiCode != null) {
                 int code = Integer.parseInt(uiCode);
@@ -82,9 +82,9 @@ public class RomUtils {
     }
 
     static boolean isMiUIV7OrAbove() {
-        try {
+        try (FileInputStream fis = new FileInputStream(new File(Environment.getRootDirectory(), "build.prop"))) {
             final Properties properties = new Properties();
-            properties.load(new FileInputStream(new File(Environment.getRootDirectory(), "build.prop")));
+            properties.load(fis);
             String uiCode = properties.getProperty(KEY_MIUI_VERSION_CODE, null);
             if (uiCode != null) {
                 int code = Integer.parseInt(uiCode);
@@ -105,14 +105,12 @@ public class RomUtils {
         String str2;
         String[] arrayOfString;
         int initial_memory = 6;
-        try {
-            FileReader localFileReader = new FileReader(str1);
-            BufferedReader localBufferedReader = new BufferedReader(localFileReader, 8192);
+        try (FileReader localFileReader = new FileReader(str1);
+             BufferedReader localBufferedReader = new BufferedReader(localFileReader, 8192)) {
             str2 = localBufferedReader.readLine();// Read the first line of meminfo, the total system memory size
             arrayOfString = str2.split("\\s+");
             // Get the total system memory in KB
             int i = Integer.valueOf(arrayOfString[1]).intValue();
-            localBufferedReader.close();
             initial_memory = i / 1024 / 1024;
             return initial_memory;
         } catch (Exception e) {

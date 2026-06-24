@@ -44,9 +44,12 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    buildFeatures {
+        buildConfig = true
+    }
     lintOptions {
-        checkReleaseBuilds false
-        abortOnError false
+        checkReleaseBuilds true
+        abortOnError true
     }
     packaging {
         resources {
@@ -128,7 +131,6 @@ publishing {
             groupId = 'org.tronlink'
             artifactId = 'tronlink-android-core'
             version = "${android.defaultConfig.versionName}"
-            print(components)
             afterEvaluate {
                 from components.release
             }

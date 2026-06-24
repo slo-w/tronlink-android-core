@@ -199,6 +199,9 @@ public class TransactionDataUtils {
     public String getEntryName(ABI abi, byte[] data, int index) {
         try {
             ABI.Entry entry = getEntry(abi, data);
+            if (entry == null) {
+                return null;
+            }
             Param outputs = entry.getInputs(index);
             return outputs.getName();
         } catch (Exception e) {

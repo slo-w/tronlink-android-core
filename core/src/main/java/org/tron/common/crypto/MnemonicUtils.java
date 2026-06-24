@@ -206,7 +206,7 @@ public class MnemonicUtils {
             final String word = tokenizer.nextToken();
             final int index = WORD_LIST.indexOf(word);
             if (index < 0) {
-                throw new IllegalArgumentException("Illegal word: " + word);
+                throw new IllegalArgumentException("Mnemonic contains a word not in the word list");
             }
             for (int k = 0; k < 11; k++) {
                 bits.set(bit++, isBitSet(index, 10 - k));
@@ -237,6 +237,8 @@ public class MnemonicUtils {
         return (byte) (bytes[0] & mask);
     }
 
+    // accepted (scan Q-12): WORD_LIST is an immutable list backed by a static array; a lazy-init
+    // race at worst rebuilds identical content with no correctness impact, so left as-is.
     private static List<String> populateWordList() {
         return Arrays.asList(BIP39.english);
     }

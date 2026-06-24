@@ -1,5 +1,6 @@
 package org.tron.metrics.reporter;
 
+import org.tron.BuildConfig;
 import org.tron.common.utils.LogUtils;
 import org.tron.metrics.bean.StatDataRequest;
 import org.tron.metrics.repository.IBalanceRepository;
@@ -37,6 +38,9 @@ public class DataUploader {
                      boolean formatPlain,
                      OkHttpClient okHttpClient,
                      String baseUrl) {
+        if (baseUrl == null || (!baseUrl.startsWith("https://") && !BuildConfig.DEBUG)) {
+            throw new IllegalArgumentException("baseUrl must use https");
+        }
         this.balanceRepository = balanceRepository;
         this.transactionRepository = transactionCache;
         this.formatPlain = formatPlain;
@@ -49,21 +53,72 @@ public class DataUploader {
     }
 
     public void upload(IUploadResultCallback iUploadResultCallback) {
+        // Every terminal path must signal the callback, otherwise host retry logic
+        // driven by onSuccess/onFail hangs forever.
         if (this.okHttpClient == null || this.baseUrl == null) {
+            notifySkipped(iUploadResultCallback, "uploader not initialized");
             return;
         }
         long startTime = System.currentTimeMillis();
         try {
+            // accepted: Q-11 prepareUploadData runs on the caller thread by design; hosts
+            // are expected to invoke upload() off the main thread, and Room guards main-thread
+            // access via IllegalStateException (caught and logged in DataPreparationManager).
             DataPreparationManager.DataPreparationResult prepResult = DataPreparationManager.prepareUploadData(balanceRepository, transactionRepository);
 
+            if (prepResult.isFailed()) {
+                notifyFail(iUploadResultCallback, new IllegalStateException("data preparation failed"));
+                return;
+            }
             if (!prepResult.hasData()) {
                 LogUtils.i(TAG, "No data needs to be uploaded");
+                notifySkipped(iUploadResultCallback, "no data to upload");
                 return;
             }
 
             executeNetworkRequest(prepResult, startTime, iUploadResultCallback);
         } catch (Exception e) {
             LogUtils.e(TAG, "Data upload flow failed: " + e.getMessage());
+            notifyFail(iUploadResultCallback, e);
+        }
+    }
+
+    /**
+     * Disposes the in-flight upload subscription. Hosts should call this on
+     * logout/shutdown so late responses cannot reach a dead context.
+     */
+    public void release() {
+        if (disposable != null && !disposable.isDisposed()) {
+            disposable.dispose();
+        }
+        disposable = null;
+    }
+
+    private void notifySkipped(IUploadResultCallback callback, String reason) {
+        if (callback == null) {
+            return;
+        }
+        try {
+            callback.onSkipped(reason);
+        } catch (Throwable t) {
+            if (t instanceof Error) {
+                throw (Error) t;
+            }
+            LogUtils.e("[" + TAG + "] onSkipped handler failed", t);
+        }
+    }
+
+    private void notifyFail(IUploadResultCallback callback, Throwable cause) {
+        if (callback == null) {
+            return;
+        }
+        try {
+            callback.onFail(cause);
+        } catch (Throwable t) {
+            if (t instanceof Error) {
+                throw (Error) t;
+            }
+            LogUtils.e("[" + TAG + "] onFail handler failed", t);
         }
     }
 
@@ -75,21 +130,47 @@ public class DataUploader {
 
             ReporterHttpApi api = createStatDataAPI();
 
+            // Dispose the previous in-flight subscription before replacing it,
+            // otherwise rapid repeated upload() calls leak subscriptions.
+            if (disposable != null && !disposable.isDisposed()) {
+                disposable.dispose();
+            }
             disposable = api.uploadStatData(requestBody).subscribeOn(Schedulers.io()).subscribe(statDataResponse -> {
-                if (statDataResponse != null && statDataResponse.getData() != null) {
-                    deleteCachedData(statDataResponse.getData().isTxt(), prepResult);
-                }
+                // Guard the entire onSuccess body: any exception thrown here would otherwise
+                // escape the RxJava chain (RxJava2 onNext exceptions go to RxJavaPlugins, not onError).
+                boolean onSuccessInvoked = false;
+                try {
+                    if (statDataResponse != null && statDataResponse.getData() != null) {
+                        deleteCachedData(statDataResponse.getData().isTxt(), prepResult);
+                    }
 
-                if (iUploadResultCallback != null) {
-                    iUploadResultCallback.onSuccess(statDataResponse);
+                    if (iUploadResultCallback != null) {
+                        onSuccessInvoked = true;
+                        iUploadResultCallback.onSuccess(statDataResponse);
+                    }
+                } catch (Throwable t) {
+                    // Let VM-level Errors continue to propagate (OOM, StackOverflow, etc.)
+                    if (t instanceof Error) {
+                        throw (Error) t;
+                    }
+                    LogUtils.e("[" + TAG + "] onSuccess handler failed", t);
+                    // Only fall back to onFail if onSuccess has not been signalled yet —
+                    // otherwise the callback contract (success XOR fail) would be violated.
+                    if (!onSuccessInvoked && iUploadResultCallback != null) {
+                        try {
+                            iUploadResultCallback.onFail(t);
+                        } catch (Throwable inner) {
+                            if (inner instanceof Error) {
+                                throw (Error) inner;
+                            }
+                            LogUtils.e("[" + TAG + "] fallback onFail also threw", inner);
+                        }
+                    }
                 }
-            }, throwable -> {
-                if (iUploadResultCallback != null) {
-                    iUploadResultCallback.onFail(throwable);
-                }
-            });
+            }, throwable -> notifyFail(iUploadResultCallback, throwable));
         } catch (Exception e) {
             LogUtils.e(TAG, "Network request exception: " + e.getMessage());
+            notifyFail(iUploadResultCallback, e);
         }
     }
 

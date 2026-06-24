@@ -43,14 +43,22 @@ public abstract class StaticArray<T extends Type> extends Array<T> {
     }
 
     @Deprecated
-    @SuppressWarnings("unchecked")
     public StaticArray(int expectedSize, List<T> values) {
-        super(
-                StructType.class.isAssignableFrom(values.get(0).getClass())
-                        ? (Class<T>) values.get(0).getClass()
-                        : (Class<T>) AbiTypes.getType(values.get(0).getTypeAsString()),
-                values);
+        super(inferElementType(values), values);
         checkValid(expectedSize);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Type> Class<T> inferElementType(List<T> values) {
+        if (values == null || values.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Cannot infer the element type of an empty array; "
+                            + "use the Class-based constructor");
+        }
+        T first = values.get(0);
+        return StructType.class.isAssignableFrom(first.getClass())
+                ? (Class<T>) first.getClass()
+                : (Class<T>) AbiTypes.getType(first.getTypeAsString());
     }
 
     @SafeVarargs

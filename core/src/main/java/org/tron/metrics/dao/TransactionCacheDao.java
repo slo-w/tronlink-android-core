@@ -5,6 +5,7 @@ import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Transaction;
 import androidx.room.Upsert;
 
 import org.tron.metrics.bean.BalanceCacheEntity;
@@ -33,4 +34,28 @@ public interface TransactionCacheDao {
 
     @Query("SELECT * FROM transaction_cache")
     List<TransactionCacheEntity> getAll();
+
+    @Query("UPDATE transaction_cache SET updated = 0 WHERE id = :id AND count = :count")
+    void clearUpdatedIfUnchanged(long id, int count);
+
+    @Query("DELETE FROM transaction_cache WHERE day != :dayNow AND updated = 0")
+    void deleteStaleUploaded(String dayNow);
+
+    /**
+     * Confirms a successful upload of the given snapshot. The flag is cleared
+     * in place and only where `count` still equals the uploaded value: rows
+     * that accumulated more transactions during the network round-trip keep
+     * updated=1 and are re-uploaded next time, instead of being overwritten
+     * by the stale snapshot.
+     */
+    @Transaction
+    default void confirmUploaded(List<TransactionCacheEntity> uploaded, String dayNow) {
+        for (TransactionCacheEntity snapshot : uploaded) {
+            if (snapshot.getId() == null) {
+                continue;
+            }
+            clearUpdatedIfUnchanged(snapshot.getId(), snapshot.getCount());
+        }
+        deleteStaleUploaded(dayNow);
+    }
 }

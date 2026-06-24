@@ -193,7 +193,7 @@ public class Bech32 {
     for (int i = 0; i < dataPartLength; ++i) {
       char c = str.charAt(i + pos + 1);
       if (CHARSET_REV[c] == -1) {
-        throw new IllegalArgumentException("InvalidCharacter(" + c + ", " + i + pos + 1 + ")");
+        throw new IllegalArgumentException("InvalidCharacter(" + c + ", " + (i + pos + 1) + ")");
       }
       values[i] = CHARSET_REV[c];
     }

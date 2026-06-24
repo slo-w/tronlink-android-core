@@ -2,7 +2,6 @@ package org.tron.walletserver;
 
 import androidx.annotation.Nullable;
 
-import com.google.gson.Gson;
 import org.tron.common.utils.GsonFormatUtils;
 
 import org.tron.common.utils.LogUtils;
@@ -90,7 +89,7 @@ public class WalletPath implements Serializable {
     public static WalletPath buildWalletPath(String mnemonicPath){
         if (!AddressUtil.isEmpty(mnemonicPath)) {
             try {
-                return  new Gson().fromJson(mnemonicPath, WalletPath.class);
+                return GsonFormatUtils.gsonToBean(mnemonicPath, WalletPath.class);
             } catch (Exception e) {
                 LogUtils.e(e);
             }
