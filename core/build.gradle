@@ -11,8 +11,8 @@ android {
     namespace = "org.tron"
     defaultConfig {
         minSdk 21
-        versionCode 9
-        versionName "1.0.9"
+        versionCode 13
+        versionName "1.0.13"
         multiDexEnabled true
         consumerProguardFiles "consumer-rules.pro"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
@@ -50,6 +50,11 @@ android {
     lintOptions {
         checkReleaseBuilds true
         abortOnError true
+    }
+    packaging {
+        resources {
+            excludes += ['**/*.proto']
+        }
     }
 }
 
