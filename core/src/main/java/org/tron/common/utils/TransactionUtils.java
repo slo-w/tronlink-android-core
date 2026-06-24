@@ -417,6 +417,10 @@ public class TransactionUtils {
                 signatureBytes = ByteArray.fromString(signature);
             }
 
+            if (signatureBytes == null || signatureBytes.length < 65) {
+                return false;
+            }
+
             byte[] r = new byte[32];
             byte[] s = new byte[32];
             byte v = signatureBytes[64];
