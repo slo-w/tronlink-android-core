@@ -130,7 +130,13 @@ public class KeyStoreUtils {
                 throw new CipherException("Invalid scrypt p parameter");
             }
             // generateMac reads derivedKey[16..32), so anything below 32 is unusable.
-            if (dklen < 32 || dklen > 128) {
+            // Upper bound stays generous: legacy keystores were created with
+            // DKLEN = plaintext length, so a mnemonic keystore stores dklen equal to
+            // the mnemonic byte length (a 21/24-word mnemonic exceeds 128 bytes).
+            // dklen is only the final PBKDF2 output length and does not drive scrypt's
+            // 128*N*R memory cost, so a large value is cheap; 1024 keeps old wallets
+            // decryptable while still rejecting absurd values.
+            if (dklen < 32 || dklen > 1024) {
                 throw new CipherException("Invalid scrypt dklen parameter");
             }
             if (scryptKdfParams.getSalt() == null) {
