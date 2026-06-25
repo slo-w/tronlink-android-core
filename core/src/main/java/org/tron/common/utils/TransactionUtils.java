@@ -537,6 +537,10 @@ public class TransactionUtils {
     public static Transaction addMemo(Transaction transaction, String memo) {
         if (AddressUtil.isEmpty(memo)) return transaction;
         if (transaction == null || transaction.toString().equals("")) return transaction;
+        // Memo is encoded as the raw string bytes, matching java-tron's
+        // Util.setTransactionExtraData visible=true branch (raw.setData(data.getBytes())); it is
+        // read back via Util.getMemo as new String(bytes, UTF-8). The commented hex form below is
+        // java-tron's visible=false branch (ByteArray.fromHexString(data)).
 //        byte[] memoByte = ByteArray.fromHexString(memo);
         byte[] memoByte = ByteArray.fromString(memo);
 

@@ -86,7 +86,7 @@ public class Hash {
             digest.update(input);
             return digest.digest();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
 
     }
@@ -100,7 +100,7 @@ public class Hash {
             digest.update(input2, 0, input2.length);
             return digest.digest();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
     }
 
@@ -120,7 +120,7 @@ public class Hash {
             digest.update(input, start, length);
             return digest.digest();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
     }
 
@@ -142,7 +142,7 @@ public class Hash {
             digest.update(input);
             return digest.digest();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
     }
 
