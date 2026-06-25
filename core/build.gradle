@@ -11,8 +11,8 @@ android {
     namespace = "org.tron"
     defaultConfig {
         minSdk 21
-        versionCode 11
-        versionName "1.0.12"
+        versionCode 13
+        versionName "1.0.13"
         multiDexEnabled true
         consumerProguardFiles "consumer-rules.pro"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
@@ -44,9 +44,12 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    buildFeatures {
+        buildConfig = true
+    }
     lintOptions {
-        checkReleaseBuilds false
-        abortOnError false
+        checkReleaseBuilds true
+        abortOnError true
     }
     packaging {
         resources {
@@ -128,7 +131,6 @@ publishing {
             groupId = 'org.tronlink'
             artifactId = 'tronlink-android-core'
             version = "${android.defaultConfig.versionName}"
-            print(components)
             afterEvaluate {
                 from components.release
             }

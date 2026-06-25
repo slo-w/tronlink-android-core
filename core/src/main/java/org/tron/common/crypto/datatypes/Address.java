@@ -85,7 +85,10 @@ public class Address implements Type<String> {
 
         Address address = (Address) o;
 
-        return value != null ? value.value.equals(address.value.value) : address.value == null;
+        if (value == null) {
+            return address.value == null;
+        }
+        return address.value != null && value.value.equals(address.value.value);
     }
 
     @Override

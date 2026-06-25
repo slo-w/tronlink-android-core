@@ -47,8 +47,10 @@ public class KeyStoreUtils {
         final int P_STANDARD = 1;
 
         final int R = 8;
-        final int DKLEN = bytes.length;
-        byte[] salt = generateRandomBytes(bytes.length);
+        // Web3 Keystore v3 standard: fixed 32-byte DKLEN and salt.
+        // Variable lengths leaked the plaintext type (32=private key, 50-60=12-word mnemonic, etc.)
+        final int DKLEN = 32;
+        byte[] salt = generateRandomBytes(32);
 
         byte[] derivedKey = generateDerivedScryptKey(password.getBytes(UTF_8), salt, N_STANDARD, R, P_STANDARD, DKLEN);
 
@@ -77,7 +79,14 @@ public class KeyStoreUtils {
 
     public static String getMnemonicWithKeyStore(String keyStore, String password) throws CipherException, IOException {
 
-        return new String(decryptToByte(password, WalletFile.createGson().fromJson(keyStore, WalletFile.class)));
+        byte[] mnemonicBytes = decryptToByte(password, WalletFile.createGson().fromJson(keyStore, WalletFile.class));
+        try {
+            return new String(mnemonicBytes);
+        } finally {
+            // Zero the decrypted plaintext copy once the String is built to
+            // shrink its residency window in the heap.
+            Arrays.fill(mnemonicBytes, (byte) 0);
+        }
     }
 
     private static ECKey decrypt(String password, WalletFile walletFile)
@@ -108,6 +117,31 @@ public class KeyStoreUtils {
             int n = scryptKdfParams.getN();
             int p = scryptKdfParams.getP();
             int r = scryptKdfParams.getR();
+            // KDF params come from untrusted keystore JSON: a huge N allocates
+            // 128*N*R bytes (OOM), and a non-power-of-two N makes SCrypt throw an
+            // undeclared IllegalArgumentException bypassing the CipherException contract.
+            if (n <= 1 || n > (1 << 20) || Integer.bitCount(n) != 1) {
+                throw new CipherException("Invalid scrypt n parameter");
+            }
+            if (r < 1 || r > 64) {
+                throw new CipherException("Invalid scrypt r parameter");
+            }
+            if (p < 1 || p > 16) {
+                throw new CipherException("Invalid scrypt p parameter");
+            }
+            // generateMac reads derivedKey[16..32), so anything below 32 is unusable.
+            // Upper bound stays generous: legacy keystores were created with
+            // DKLEN = plaintext length, so a mnemonic keystore stores dklen equal to
+            // the mnemonic byte length (a 21/24-word mnemonic exceeds 128 bytes).
+            // dklen is only the final PBKDF2 output length and does not drive scrypt's
+            // 128*N*R memory cost, so a large value is cheap; 1024 keeps old wallets
+            // decryptable while still rejecting absurd values.
+            if (dklen < 32 || dklen > 1024) {
+                throw new CipherException("Invalid scrypt dklen parameter");
+            }
+            if (scryptKdfParams.getSalt() == null) {
+                throw new CipherException("Malformed keystore: missing scrypt salt");
+            }
             byte[] salt = ByteArray.fromHexString(scryptKdfParams.getSalt());
             derivedKey = generateDerivedScryptKey(password.getBytes(UTF_8), salt, n, r, p, dklen);
         } else if (kdfParams instanceof WalletFile.Aes128CtrKdfParams) {
@@ -115,6 +149,15 @@ public class KeyStoreUtils {
                     (WalletFile.Aes128CtrKdfParams) crypto.getKdfparams();
             int c = aes128CtrKdfParams.getC();
             String prf = aes128CtrKdfParams.getPrf();
+            // PBKDF2 iteration count comes from untrusted keystore JSON. A tiny c (e.g. 0/1)
+            // makes password derivation nearly free, weakening offline brute-force resistance;
+            // an excessive c causes a local DoS. Mirror the scrypt branch's parameter bounds.
+            if (c < 10000 || c > (1 << 24)) {
+                throw new CipherException("Invalid pbkdf2 c parameter");
+            }
+            if (aes128CtrKdfParams.getSalt() == null) {
+                throw new CipherException("Malformed keystore: missing pbkdf2 salt");
+            }
             byte[] salt = ByteArray.fromHexString(aes128CtrKdfParams.getSalt());
 
             derivedKey = generateAes128CtrDerivedKey(password.getBytes(UTF_8), salt, c, prf);
@@ -122,22 +165,31 @@ public class KeyStoreUtils {
             throw new CipherException("Unable to deserialize params: " + crypto.getKdf());
         }
 
-        byte[] derivedMac = generateMac(derivedKey, cipherText);
+        byte[] encryptKey = null;
+        try {
+            byte[] derivedMac = generateMac(derivedKey, cipherText);
 
-        if (!Arrays.equals(derivedMac, mac)) {
-            throw new CipherException("Invalid password provided");
+            if (!Arrays.equals(derivedMac, mac)) {
+                throw new CipherException("Invalid password provided");
+            }
+
+            encryptKey = Arrays.copyOfRange(derivedKey, 0, 16);
+            byte[] privateKey = performCipherOperation(Cipher.DECRYPT_MODE, iv, encryptKey, cipherText);
+            return privateKey;
+        } finally {
+            // Wipe the derived key material so it does not linger in the heap
+            // until GC. The returned plaintext is owned by the caller.
+            Arrays.fill(derivedKey, (byte) 0);
+            if (encryptKey != null) {
+                Arrays.fill(encryptKey, (byte) 0);
+            }
         }
-
-        byte[] encryptKey = Arrays.copyOfRange(derivedKey, 0, 16);
-        byte[] privateKey = performCipherOperation(Cipher.DECRYPT_MODE, iv, encryptKey, cipherText);
-        return privateKey;
-
     }
 
     private static byte[] generateAes128CtrDerivedKey(
             byte[] password, byte[] salt, int c, String prf) throws CipherException {
 
-        if (!prf.equals("hmac-sha256")) {
+        if (!"hmac-sha256".equals(prf)) {
             throw new CipherException("Unsupported prf:" + prf);
         }
 
@@ -151,12 +203,28 @@ public class KeyStoreUtils {
 
 
     private static void validate(WalletFile walletFile) throws CipherException {
-        WalletFile.Crypto crypto = walletFile.getCrypto();
         final int CURRENT_VERSION = 3;
         final String CIPHER = "aes-128-ctr";
 
         final String AES_128_CTR = "pbkdf2";
         final String SCRYPT = "scrypt";
+
+        // Keystore JSON is user-pasted input: Gson may return null or leave any
+        // field null, which must surface as the declared CipherException, not NPE.
+        if (walletFile == null) {
+            throw new CipherException("Malformed keystore: empty content");
+        }
+        WalletFile.Crypto crypto = walletFile.getCrypto();
+        if (crypto == null
+                || crypto.getCipher() == null
+                || crypto.getKdf() == null
+                || crypto.getKdfparams() == null
+                || crypto.getCiphertext() == null
+                || crypto.getMac() == null
+                || crypto.getCipherparams() == null
+                || crypto.getCipherparams().getIv() == null) {
+            throw new CipherException("Malformed keystore: missing crypto fields");
+        }
 
         if (walletFile.getVersion() != CURRENT_VERSION) {
             throw new CipherException("Wallet version is not supported");
@@ -177,7 +245,7 @@ public class KeyStoreUtils {
             int n, int p) {
         final String CIPHER = "aes-128-ctr";
         final String SCRYPT = "scrypt";
-        final int DKLEN = salt.length;
+        final int DKLEN = 32;
         final int CURRENT_VERSION = 3;
         final int R = 8;
         WalletFile walletFile = new WalletFile();

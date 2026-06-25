@@ -19,50 +19,50 @@
     <!--Dialog-->
     <style name="loading_dialog" parent="@android:style/Theme.Dialog">
         <item name="android:windowFrame">@null</item>
-        <!-- 边框 -->
+        <!-- no window frame -->
         <item name="android:windowIsFloating">true</item>
-        <!-- 是否浮现在activity之上 -->
+        <!-- float above the activity -->
         <item name="android:windowIsTranslucent">false</item>
-        <!-- 半透明 -->
+        <!-- translucency -->
         <item name="android:windowNoTitle">true</item>
-        <!-- 无标题 -->
+        <!-- no title bar -->
         <item name="android:windowBackground">@android:color/transparent</item>
-        <!-- 自己想要的背景 -->
+        <!-- custom background -->
         <item name="android:backgroundDimEnabled">true</item>
-        <!-- 模糊 -->
+        <!-- dim behind -->
 
         <item name="android:windowFullscreen">true</item>
     </style>
 
     <style name="loading_dialog_2" parent="@android:style/Theme.Dialog">
         <item name="android:windowFrame">@null</item>
-        <!-- 边框 -->
+        <!-- no window frame -->
         <item name="android:windowIsFloating">true</item>
-        <!-- 是否浮现在activity之上 -->
+        <!-- float above the activity -->
         <item name="android:windowIsTranslucent">true</item>
-        <!-- 半透明 -->
+        <!-- translucency -->
         <item name="android:windowNoTitle">true</item>
-        <!-- 无标题 -->
+        <!-- no title bar -->
         <item name="android:windowBackground">@android:color/transparent</item>
-        <!-- 自己想要的背景 -->
+        <!-- custom background -->
         <item name="android:backgroundDimEnabled">true</item>
-        <!-- 模糊 -->
+        <!-- dim behind -->
 
         <item name="android:windowFullscreen">true</item>
     </style>
     <style name="dialog_bright" parent="@android:style/Theme.Dialog">
         <item name="android:windowFrame">@null</item>
-        <!-- 边框 -->
+        <!-- no window frame -->
         <item name="android:windowIsFloating">true</item>
-        <!-- 是否浮现在activity之上 -->
+        <!-- float above the activity -->
         <item name="android:windowIsTranslucent">true</item>
-        <!-- 半透明 -->
+        <!-- translucency -->
         <item name="android:windowNoTitle">true</item>
-        <!-- 无标题 -->
+        <!-- no title bar -->
         <item name="android:windowBackground">@android:color/transparent</item>
-        <!-- 自己想要的背景 -->
+        <!-- custom background -->
         <item name="android:backgroundDimEnabled">true</item>
-        <!-- 模糊 -->
+        <!-- dim behind -->
         <item name="android:windowFullscreen">true</item>
         <item name="android:backgroundDimAmount">0.5</item>
     </style>

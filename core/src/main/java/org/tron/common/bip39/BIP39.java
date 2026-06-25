@@ -33,6 +33,17 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class BIP39
 {
+    /**
+     * Kept only for backward compatibility with legacy (non-HD) wallets; this is NOT
+     * standard BIP39 seed derivation.
+     *
+     * <p>Note: this method uses Blowfish/ECB and takes the passphrase string directly as the
+     * key, which is a weak scheme that does not conform to the BIP39 spec (PBKDF2-HMAC-SHA512).
+     * Its sole purpose is to decrypt seeds produced by very old wallet versions, so it
+     * <b>must not be removed and its algorithm must not be changed</b> — otherwise historical
+     * data could no longer be decrypted. New code must not call this method; use
+     * {@code org.tron.common.crypto.MnemonicUtils#generateSeed} instead.
+     */
     public static byte[] decode (String mnemonic, String passphrase) throws ValidationException
     {
         StringTokenizer tokenizer = new StringTokenizer (mnemonic);
@@ -46,6 +57,10 @@ public class BIP39
         while ( tokenizer.hasMoreElements () )
         {
             int c = Arrays.binarySearch (english, tokenizer.nextToken ());
+            if ( c < 0 )
+            {
+                throw new ValidationException ("invalid mnemonic word");
+            }
             for ( int j = 0; j < 11; ++j )
             {
                 bits[i++] = (c & (1 << (10 - j))) > 0;
@@ -82,6 +97,11 @@ public class BIP39
         return data;
     }
 
+    /**
+     * Inverse of {@link #decode(String, String)}, using the same weak Blowfish/ECB scheme.
+     * Kept only for backward compatibility with legacy wallets; must not be removed and its
+     * algorithm must not be changed. New code must not call this method.
+     */
     public static String encode (byte[] data, String passphrase) throws ValidationException
     {
         if ( data.length % 8 != 0 )

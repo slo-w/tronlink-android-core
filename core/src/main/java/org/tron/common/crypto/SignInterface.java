@@ -20,7 +20,7 @@ public interface SignInterface {
 
   byte[] getNodeId();
 
-  byte[] Base64toBytes (String signature);
+  byte[] Base64toBytes (String signature) throws SignatureException;
 
   byte[] getPrivKeyBytes();
 

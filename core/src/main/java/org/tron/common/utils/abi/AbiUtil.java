@@ -29,6 +29,12 @@ public class AbiUtil {
     private static Pattern paramTypeNumber = Pattern.compile("^(u?int)([0-9]*)$");
     private static Pattern paramTypeArray = Pattern.compile("^(.*)\\[([0-9]*)]$");
 
+    // Upper bound for fixed-size ABI array length taken from a (DApp-supplied) method
+    // signature. Without it a signature like uint256[2000000000] makes CoderArray.encode
+    // allocate billions of coders, exhausting memory (local DoS). Real contract calls use
+    // small fixed arrays, so 1024 is a generous ceiling.
+    private static final int MAX_FIXED_ARRAY_LENGTH = 1024;
+
     // LAZILY_PARSED_NUMBER keeps the raw JSON numeric literal so uint256 values
     // survive toString() without Long/Double precision loss.
     private static final Gson LIST_GSON = new GsonBuilder()
@@ -104,6 +110,11 @@ public class AbiUtil {
             int length = -1;
             if (!m.group(2).equals("")) {
                 length = Integer.valueOf(m.group(2));
+                if (length > MAX_FIXED_ARRAY_LENGTH) {
+                    throw new IllegalArgumentException(
+                        "ABI fixed array length " + length + " exceeds limit "
+                            + MAX_FIXED_ARRAY_LENGTH);
+                }
             }
             return new CoderArray(arrayType, length);
         }
@@ -162,6 +173,44 @@ public class AbiUtil {
         }
     }
 
+    // Returns whether an ABI type is dynamic (consistent with this file's paramTypeArray
+    // regex and tuple parsing).
+    private static boolean isDynamicType(String type) {
+        if (type == null) {
+            return false;
+        }
+        type = type.trim();
+        if (type.equals("string") || type.equals("bytes")) {
+            return true;
+        }
+        Matcher m = paramTypeArray.matcher(type);
+        if (m.find()) {
+            // An array without a fixed length is itself dynamic; a fixed-length array is
+            // dynamic when its element type is dynamic.
+            if (m.group(2).equals("")) {
+                return true;
+            }
+            return isDynamicType(m.group(1));
+        }
+        if (type.contains("tuple")) {
+            int start = type.indexOf('(') + 1;
+            int end = type.lastIndexOf(')');
+            if (start <= 0 || end < start) {
+                return false;
+            }
+            String inner = type.substring(start, end);
+            if (inner.isEmpty()) {
+                return false;
+            }
+            for (String t : inner.split(",")) {
+                if (isDynamicType(t)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     static class CoderTuple extends Coder {
         private String elementTypes;
         private List<String> elementTypeList = new ArrayList<>();
@@ -180,7 +229,16 @@ public class AbiUtil {
                     length = elementTypeList.size();
                 }
             }
+            // Per the ABI spec a tuple is dynamic if any member is dynamic (string/bytes/
+            // dynamic array/nested dynamic tuple); only then does the parent pack() encode it
+            // with a head/tail offset pointer, otherwise subsequent parameter offsets are wrong.
             this.dynamic = false;
+            for (String elementType : elementTypeList) {
+                if (isDynamicType(elementType)) {
+                    this.dynamic = true;
+                    break;
+                }
+            }
         }
 
         @Override
@@ -199,11 +257,9 @@ public class AbiUtil {
                 return null;
             }
 
-            if (this.length == -1) {
-                return ByteUtil.merge(new DataWord(strings.size()).getData(), pack(coders, strings));
-            } else {
-                return pack(coders, strings);
-            }
+            // A tuple carries no length prefix (unlike a dynamic array); its members' head/tail
+            // offsets are handled inside pack() according to each member's dynamic flag.
+            return pack(coders, strings);
         }
 
         @Override
@@ -387,6 +443,14 @@ public class AbiUtil {
     }
 
     public static byte[] pack(List<Coder> codes, List<Object> values) {
+        // Both lists derive from DApp-supplied method signature and params; any
+        // mismatch must fail with a clear message instead of NPE/IndexOutOfBounds.
+        if (codes == null || values == null || codes.size() != values.size()) {
+            throw new IllegalArgumentException(
+                    "Parameter count does not match method signature: "
+                            + (codes == null ? 0 : codes.size()) + " type(s), "
+                            + (values == null ? 0 : values.size()) + " value(s)");
+        }
 
         int staticSize = 0;
         int dynamicSize = 0;
@@ -396,6 +460,10 @@ public class AbiUtil {
         for (int idx = 0; idx < codes.size(); idx++) {
             Coder coder = codes.get(idx);
             Object parameter = values.get(idx);
+            if (coder == null || parameter == null) {
+                throw new IllegalArgumentException(
+                        "Unsupported or missing parameter type at index " + idx);
+            }
             String value;
             if (parameter instanceof List) {
                 StringBuilder sb = new StringBuilder();
@@ -410,6 +478,10 @@ public class AbiUtil {
                 value = parameter.toString();
             }
             byte[] encoded = coder.encode(value);
+            if (encoded == null) {
+                throw new IllegalArgumentException(
+                        "Failed to encode parameter at index " + idx);
+            }
             encodedList.add(encoded);
 
             if (coder.dynamic) {
@@ -450,7 +522,6 @@ public class AbiUtil {
     public static String parseMethod(String methodSign, String input, boolean isHex) {
         byte[] selector = new byte[4];
         System.arraycopy(Hash.sha3(methodSign.getBytes()), 0, selector, 0, 4);
-        System.out.println(methodSign + ":" + Hex.toHexString(selector));
         if (input.length() == 0) {
             return Hex.toHexString(selector);
         }
@@ -547,20 +618,20 @@ public class AbiUtil {
 
 
     public static long decodeABI(String input) {
-        byte[] data;
-        data = Hex.decode(input);
-        if (data == null)
+        byte[] data = Hex.decode(input);
+        if (data == null) {
             data = ByteUtil.EMPTY_BYTE_ARRAY;
-        else if (data.length == 32)
-            data = data;
-        else if (data.length <= 32)
-            System.arraycopy(data, 0, data, 32 - data.length, data.length);
+        }
+        // Right-align the raw bytes into a 32-byte ABI word buffer.
+        byte[] word = new byte[32];
+        int copyLength = Math.min(data.length, 32);
+        System.arraycopy(data, data.length - copyLength, word, 32 - copyLength, copyLength);
+        // A long only holds 8 bytes; fold the low-order 8 bytes (big-endian) to avoid overflow.
         long longVal = 0;
-        for (byte aData : data) {
-            longVal = (longVal << 8) + (aData & 0xff);
+        for (int i = 24; i < 32; i++) {
+            longVal = (longVal << 8) + (word[i] & 0xff);
         }
         return longVal;
-
     }
 
 }

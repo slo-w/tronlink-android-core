@@ -232,12 +232,13 @@ public class TransactionUtils {
             }
             return owner.toByteArray();
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LogUtils.e(ex);
             return null;
         }
     }
 
     public static String getBase64FromByteString(ByteString sign) {
+        // Expects a 65-byte signature: r (0..32) | s (32..64) | v (64).
         byte[] r = sign.substring(0, 32).toByteArray();
         byte[] s = sign.substring(32, 64).toByteArray();
         byte v = sign.byteAt(64);
@@ -254,17 +255,22 @@ public class TransactionUtils {
      * @return
      */
     public static Transaction sign(Transaction transaction, ECKey myKey) {
+        // Returning an unsigned transaction silently is indistinguishable from
+        // success for callers; fail fast like the chainId overload does.
+        if (transaction == null) {
+            throw new IllegalArgumentException("Transaction required for sign");
+        }
+        if (myKey == null) {
+            throw new IllegalArgumentException("ECKey required for sign");
+        }
         Transaction.Builder transactionBuilderSigned = transaction.toBuilder();
         byte[] hash = sha256(transaction.getRawData().toByteArray());
-        List<Contract> listContract = transaction.getRawData().getContractList();
-        for (int i = 0; i < listContract.size(); i++) {
-            if (myKey != null) {
-                ECKey.ECDSASignature signature = myKey.sign(hash);
-                ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
-                transactionBuilderSigned.addSignature(
-                        bsSign);//Each contract may be signed with a different private key in the future.
-            }
-        }
+        // Sign the rawData hash once. Looping over the contract list signed the same hash with the
+        // same key repeatedly, producing duplicate signatures for multi-contract transactions.
+        ECKey.ECDSASignature signature = myKey.sign(hash);
+        ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
+        transactionBuilderSigned.addSignature(
+                bsSign);//Each contract may be signed with a different private key in the future.
 
         transaction = transactionBuilderSigned.build();
         return transaction;
@@ -279,6 +285,9 @@ public class TransactionUtils {
         //TODO Temporary add，3。3。0 changed to throw exception
         if (hash == null || hash.length == 0) return transactionBuilderSigned.build();
 
+        if (!isMainChain && chainId == null) {
+            throw new IllegalArgumentException("chainId required when isMainChain=false");
+        }
         byte[] newHash;
         if (isMainChain) {
             newHash = hash;
@@ -296,6 +305,8 @@ public class TransactionUtils {
     }
 
     public static String sign(String unSign, ECKey myKey) {
+        if (unSign == null || unSign.isEmpty())
+            throw new IllegalArgumentException("unSign must not be empty");
         unSign = unSign.replaceFirst("0x", "");
         byte[] bytes;
         if (AddressUtil.isHexString(unSign)) {
@@ -359,6 +370,9 @@ public class TransactionUtils {
      * @return
      */
     public static String enCodeSignature(byte[] signature) {
+        if (signature == null || signature.length < 65) {
+            throw new IllegalArgumentException("signature must be >= 65 bytes");
+        }
         byte[] r = new byte[32];
         byte[] s = new byte[32];
         byte v = signature[64];
@@ -403,6 +417,10 @@ public class TransactionUtils {
                 signatureBytes = ByteArray.fromString(signature);
             }
 
+            if (signatureBytes == null || signatureBytes.length < 65) {
+                return false;
+            }
+
             byte[] r = new byte[32];
             byte[] s = new byte[32];
             byte v = signatureBytes[64];
@@ -443,7 +461,7 @@ public class TransactionUtils {
         Transaction.Builder builder = transaction.toBuilder();
         Transaction.raw.Builder rowBuilder = transaction.getRawData()
                 .toBuilder();
-        if (timestamp != 0) rowBuilder.setTimestamp(currentTime);
+        rowBuilder.setTimestamp(timestamp != 0 ? timestamp : currentTime);
         builder.setRawData(rowBuilder.build());
         return builder.build();
     }
@@ -515,35 +533,6 @@ public class TransactionUtils {
         return Sha256Hash.of(mergedByte)
                 .getBytes();
     }
-
-    /*
-     *  create transaction
-     */
-    public static Transaction createTransactionCapsuleWithoutValidate(
-            com.google.protobuf.Message message,
-            Contract.ContractType contractType) {
-        Transaction.raw.Builder transactionBuilder = Transaction.raw.newBuilder().addContract(
-                Contract.newBuilder().setType(contractType).setParameter(
-                        Any.pack(message)).build());
-        Transaction transaction = Transaction.newBuilder().setRawData(transactionBuilder.build()).build();
-        try {
-            Protocol.Block block = null;
-//            Protocol.Block block = TronAPI.getNowBlock();
-            setReference(transaction, block);
-            //temporary
-            long TRANSACTION_DEFAULT_EXPIRATION_TIME = 60 * 1_000L; //60 seconds
-            long expiration = block.getBlockHeader().getRawData().getTimestamp() + TRANSACTION_DEFAULT_EXPIRATION_TIME;
-            transaction = setTimestamp(transaction, System.currentTimeMillis());
-            transaction = setExpiration(transaction, expiration);
-
-        } catch (Exception e) {
-            LogUtils.i("Create transaction capsule failed." + e.getMessage());
-        }
-        return transaction;
-    }
-
-
-
 
     public static Transaction addMemo(Transaction transaction, String memo) {
         if (AddressUtil.isEmpty(memo)) return transaction;

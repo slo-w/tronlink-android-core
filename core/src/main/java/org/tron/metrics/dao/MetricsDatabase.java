@@ -26,24 +26,25 @@ public abstract class MetricsDatabase extends RoomDatabase {
 
     public static MetricsDatabase getInstance() {
         if (INSTANCE == null) {
-            throw new IllegalStateException("MetricsDatabase not initialized");
+            throw new IllegalStateException(
+                    "MetricsDatabase not initialized. Call MetricsDatabase.init(context, env) before use.");
         }
         return INSTANCE;
     }
 
     public static synchronized void init(Context context, String evn) {
         if (INSTANCE == null) {
-            synchronized (MetricsDatabase.class) {
-                if (INSTANCE == null) {
-                    INSTANCE = Room.databaseBuilder(
-                                    context.getApplicationContext(),
-                                    MetricsDatabase.class,
-                                    evn == null || evn.isEmpty() ? DB_NAME : evn + "_" + DB_NAME
-                            )
-                            .fallbackToDestructiveMigrationOnDowngrade(true)
-                            .build();
-                }
-            }
+            INSTANCE = Room.databaseBuilder(
+                            context.getApplicationContext(),
+                            MetricsDatabase.class,
+                            evn == null || evn.isEmpty() ? DB_NAME : evn + "_" + DB_NAME
+                    )
+                    // metrics is a rebuildable statistics cache, so a schema bump without
+                    // a registered Migration may safely drop and recreate it instead of
+                    // crashing. dropAllTables=true also clears tables Room no longer tracks;
+                    // this covers both upgrade and downgrade directions.
+                    .fallbackToDestructiveMigration(true)
+                    .build();
         }
     }
 

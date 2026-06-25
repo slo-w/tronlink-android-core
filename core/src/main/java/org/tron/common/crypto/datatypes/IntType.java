@@ -12,6 +12,8 @@
  */
 package org.tron.common.crypto.datatypes;
 
+import org.tron.config.Parameter;
+
 import java.math.BigInteger;
 
 /** Common integer properties. */
@@ -43,8 +45,15 @@ public abstract class IntType extends NumericType {
     }
 
     private static boolean isValidBitCount(int bitSize, BigInteger value) {
-//        return value.bitLength() <= bitSize;
-        //todo Dealing with address length issues 4.13.13
-        return true;
+        if (value.bitLength() <= bitSize) {
+            return true;
+        }
+        // TRON address words decoded from the chain keep the 0x41 network prefix
+        // (21 bytes = 168 bits), which exceeds uint160. Allow exactly that shape
+        // so Address/Uint160 decoding keeps working; reject everything else.
+        return bitSize == Address.DEFAULT_LENGTH
+                && value.signum() > 0
+                && value.shiftRight(Address.DEFAULT_LENGTH)
+                        .equals(BigInteger.valueOf(Parameter.CommonConstant.ADD_PRE_FIX_BYTE & 0xFF));
     }
 }

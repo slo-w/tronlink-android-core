@@ -3,6 +3,7 @@ package org.tron;
 import com.google.protobuf.ByteString;
 
 import org.bouncycastle.util.encoders.Hex;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 import org.tron.api.GrpcAPI;
@@ -138,6 +139,14 @@ public class TransactionCoreUnitTest {
         stub = WalletGrpc.newBlockingStub(channel);
     }
 
+    @After
+    public void tearDown() {
+        if (channel != null) {
+            channel.shutdown();
+            channel = null;
+        }
+    }
+
     public Protocol.Transaction createTrxTransferTransaction(String ownerAddress, String toAddress, long amount) throws Exception {
         if ("".equals(ownerAddress) || "".equals(toAddress)) {
             throw new Exception("You must assign values to the parameters called " +
@@ -163,6 +172,8 @@ public class TransactionCoreUnitTest {
         if (transactionExtentionTRX.hasResult() && transactionExtentionTRX.getTransaction().toString().length() > 0) {
             transaction = transactionExtentionTRX.getTransaction();
         }
+        // Fail with an assertion instead of an NPE when the node returns no result.
+        Assert.assertNotNull("createTransaction2 returned no transaction", transaction);
         System.out.println(TAG_TRANSACTION + " = " + transaction.toString());
         return transaction;
     }
@@ -197,6 +208,8 @@ public class TransactionCoreUnitTest {
         if (transferExtention.hasResult() && transferExtention.getTransaction().toString().length() > 0) {
             transaction = transferExtention.getTransaction();
         }
+        // Fail with an assertion instead of an NPE when the node returns no result.
+        Assert.assertNotNull("transferAsset2 returned no transaction", transaction);
         System.out.println(TAG_TRANSACTION + " = " + transaction.toString());
         return transaction;
 

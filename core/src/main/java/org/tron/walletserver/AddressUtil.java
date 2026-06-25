@@ -1,8 +1,11 @@
 package org.tron.walletserver;
 
+import android.text.TextUtils;
+
 import org.tron.common.crypto.Hash;
 import org.tron.common.utils.Base58;
 import org.tron.common.utils.ByteArray;
+import org.tron.common.utils.LogUtils;
 import org.tron.common.utils.Sha256Hash;
 import org.tron.config.Parameter;
 
@@ -11,6 +14,8 @@ import org.tron.config.Parameter;
  */
 public class AddressUtil {
     public static final String EMPTY_STRING = "";
+
+    private static final String TAG = "AddressUtil";
 
     /**
      * Determine if it is empty
@@ -101,9 +106,22 @@ public class AddressUtil {
 
 
     public static String replace41Address(String address) {
+        if (address == null) {
+            // Fail fast on malformed input instead of throwing a bare NPE on
+            // startsWith below. Address callers (ABI/EIP-712 encoding) handle
+            // external input, so surface the error rather than silently continue.
+            throw new IllegalArgumentException("address must not be null");
+        }
         String unPreAddress = address;
         if (address.startsWith("T")) {
-            unPreAddress = ByteArray.toHexString(AddressUtil.decode58Check((String) address));
+            byte[] decoded = AddressUtil.decode58Check(address);
+            if (decoded == null) {
+                // decode58Check returns null on a bad checksum/length. Fail fast
+                // instead of toHexString(null) producing an empty/garbage address
+                // that would flow into signing or transaction construction.
+                throw new IllegalArgumentException("invalid base58 address");
+            }
+            unPreAddress = ByteArray.toHexString(decoded);
 
             return unPreAddress.replaceFirst("41", "");
         } else if (address.startsWith("41")) {
@@ -111,6 +129,7 @@ public class AddressUtil {
         } else if (address.startsWith("0x")) {
             return unPreAddress.replaceFirst("0x", "");
         }
+        // No recognized prefix: assume the input is already raw hex and return as-is.
         return unPreAddress;
     }
 
@@ -132,7 +151,10 @@ public class AddressUtil {
             }
             return null;
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
+            // Only IllegalArgumentException is treated as "invalid Base58 input" and
+            // mapped to null. Other RuntimeExceptions are intentionally left to
+            // propagate so callers do not silently consume an unexpected failure.
+            LogUtils.e(TAG, "decode58Check failed for invalid Base58 input: " + e.getMessage());
             return null;
         }
     }
@@ -164,16 +186,14 @@ public class AddressUtil {
      * @return
      */
     public static boolean isHexString(String hexString) {
+        if (TextUtils.isEmpty(hexString)) return false;
         String regex = "^[A-Fa-f0-9]+$";
-
         if (hexString.matches(regex)) {
             return true;
         } else {
             return false;
-
         }
     }
-
 
 
 }

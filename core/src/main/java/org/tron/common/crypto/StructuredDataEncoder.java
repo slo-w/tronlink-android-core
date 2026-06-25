@@ -345,7 +345,10 @@ public class StructuredDataEncoder {
             }
         } catch (Exception e) {
             LogUtils.e(e);
-            hashBytes = new byte[0];
+            // Do not fall back to empty bytes: that would let a malformed/failed field be
+            // signed over a hash built from incomplete data. Abort so the caller (which
+            // already handles RuntimeException from hashStructuredData) cancels signing.
+            throw new IllegalArgumentException("Failed to encode EIP-712 item: " + baseType, e);
         }
 
         return hashBytes;

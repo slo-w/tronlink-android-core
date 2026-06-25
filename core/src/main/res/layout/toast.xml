@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:orientation="vertical">
@@ -28,19 +29,19 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="11111"
+            tools:text="toast title"
             android:textColor="@color/white_F7"
-            android:textSize="14dp" />
+            android:textSize="14sp" />
 
         <TextView
             android:id="@android:id/message"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="11111"
+            tools:text="toast message"
             android:maxWidth="210dp"
             android:textColor="@color/white_F7"
-            android:textSize="14dp" />
+            android:textSize="14sp" />
 
 
     </LinearLayout>

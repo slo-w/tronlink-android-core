@@ -43,13 +43,9 @@ import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.asn1.x9.X9IntegerConverter;
 import org.bouncycastle.crypto.agreement.ECDHBasicAgreement;
 import org.bouncycastle.crypto.digests.SHA256Digest;
-import org.bouncycastle.crypto.engines.AESEngine;
-import org.bouncycastle.crypto.modes.SICBlockCipher;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.crypto.params.ECPrivateKeyParameters;
 import org.bouncycastle.crypto.params.ECPublicKeyParameters;
-import org.bouncycastle.crypto.params.KeyParameter;
-import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.crypto.signers.ECDSASigner;
 import org.bouncycastle.crypto.signers.HMacDSAKCalculator;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
@@ -60,7 +56,6 @@ import org.bouncycastle.jce.spec.ECPublicKeySpec;
 import org.bouncycastle.math.ec.ECAlgorithms;
 import org.bouncycastle.math.ec.ECCurve;
 import org.bouncycastle.math.ec.ECPoint;
-import org.bouncycastle.util.BigIntegers;
 import org.bouncycastle.util.encoders.Base64;
 import org.bouncycastle.util.encoders.Hex;
 import org.tron.common.crypto.cryptohash.Keccak256;
@@ -445,6 +440,12 @@ public class ECKey implements Serializable, SignInterface {
     if (header < 27 || header > 34) {
       throw new SignatureException("Header byte out of range: " + header);
     }
+    // S-04: enforce low-s (canonical) on the recovery path to reject signature
+    // malleability. The generation side canonicalises s; recovery did not, so both
+    // (r, s) and (r, N-s) verified to the same recovered key/address.
+    if (sig.s.compareTo(HALF_CURVE_ORDER) > 0) {
+      throw new SignatureException("s must be low-s (canonical); rejecting malleable signature");
+    }
     if (header >= 31) {
       header -= 4;
     }
@@ -777,8 +778,18 @@ public class ECKey implements Serializable, SignInterface {
     return sign(hash).toBase64();
   }
 
-  public byte[] Base64toBytes(String signature) {
-    byte[] signData = Base64.decode(signature);
+  public byte[] Base64toBytes(String signature) throws SignatureException {
+    byte[] signData;
+    try {
+      signData = Base64.decode(signature);
+    } catch (RuntimeException e) {
+      // Bouncy Castle throws an unchecked exception when base64 fails to decode.
+      throw new SignatureException("Could not decode base64", e);
+    }
+    if (signData.length < 65) {
+      throw new SignatureException(
+              "Signature truncated, expected 65 " + "bytes and got " + signData.length);
+    }
     byte first = (byte) (signData[0] - 27);
     byte[] temp = Arrays.copyOfRange(signData, 1, 65);
     return ByteUtil.appendByte(temp, first);
@@ -959,52 +970,6 @@ public class ECKey implements Serializable, SignInterface {
         throw new RuntimeException("ECDH key agreement failure", ex);
       }
     }
-  }
-
-  /**
-   * Decrypt cipher by AES in SIC(also know as CTR) mode
-   *
-   * @param cipher -proper cipher
-   * @return decrypted cipher, equal length to the cipher.
-   * @deprecated should not use EC private scalar value as an AES key
-   */
-  public byte[] decryptAES(byte[] cipher) {
-
-    if (privKey == null) {
-      throw new MissingPrivateKeyException();
-    }
-    if (!(privKey instanceof BCECPrivateKey)) {
-      throw new UnsupportedOperationException("Cannot use the private " + "key as an AES key");
-    }
-
-    AESEngine engine = new AESEngine();
-    SICBlockCipher ctrEngine = new SICBlockCipher(engine);
-
-    KeyParameter key =
-            new KeyParameter(BigIntegers.asUnsignedByteArray(((BCECPrivateKey) privKey).getD()));
-    ParametersWithIV params = new ParametersWithIV(key, new byte[16]);
-
-    ctrEngine.init(false, params);
-
-    int i = 0;
-    byte[] out = new byte[cipher.length];
-    while (i < cipher.length) {
-      ctrEngine.processBlock(cipher, i, out, i);
-      i += engine.getBlockSize();
-      if (cipher.length - i < engine.getBlockSize()) {
-        break;
-      }
-    }
-
-    // process left bytes
-    if (cipher.length - i > 0) {
-      byte[] tmpBlock = new byte[16];
-      System.arraycopy(cipher, i, tmpBlock, 0, cipher.length - i);
-      ctrEngine.processBlock(tmpBlock, 0, tmpBlock, 0);
-      System.arraycopy(tmpBlock, 0, out, i, cipher.length - i);
-    }
-
-    return out;
   }
 
   /**
