@@ -131,6 +131,13 @@ public class TypeDecoder {
             byte[] inputByteArray = Numeric.hexStringToByteArray(input);
             int typeLengthAsBytes = getTypeLengthInBytes(type);
 
+            if (inputByteArray.length < Type.MAX_BYTE_LENGTH) {
+                throw new TypeMappingException(
+                        "Invalid numeric input for " + type.getName()
+                                + ": expected at least " + Type.MAX_BYTE_LENGTH
+                                + " bytes but got " + inputByteArray.length);
+            }
+
             byte[] resultByteArray = new byte[typeLengthAsBytes + 1];
 
             if (Int.class.isAssignableFrom(type) || Fixed.class.isAssignableFrom(type)) {
