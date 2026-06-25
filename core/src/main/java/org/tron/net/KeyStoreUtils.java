@@ -42,6 +42,7 @@ public class KeyStoreUtils {
         return getKeyStore(password, mnemonic.getBytes(), address);
     }
 
+    // NOTE: zeroes the provided plaintext `bytes` on return; pass a throwaway copy.
     public static String getKeyStore(String password, byte[] bytes, String address) throws CipherException {
 
         final int N_STANDARD = RomUtils.getTotalMemory() > 2 ? 1 << 16 : 1 << 14;
@@ -53,24 +54,34 @@ public class KeyStoreUtils {
         final int DKLEN = 32;
         byte[] salt = generateRandomBytes(32);
 
-        byte[] derivedKey = generateDerivedScryptKey(password.getBytes(UTF_8), salt, N_STANDARD, R, P_STANDARD, DKLEN);
+        byte[] passwordBytes = password.getBytes(UTF_8);
+        byte[] derivedKey = generateDerivedScryptKey(passwordBytes, salt, N_STANDARD, R, P_STANDARD, DKLEN);
 
         byte[] encryptKey = Arrays.copyOfRange(derivedKey, 0, 16);
         byte[] iv = generateRandomBytes(16);
 
+        try {
+            byte[] cipherText = performCipherOperation(Cipher.ENCRYPT_MODE, iv, encryptKey,
+                    bytes);
 
-        byte[] cipherText = performCipherOperation(Cipher.ENCRYPT_MODE, iv, encryptKey,
-                bytes);
-
-        byte[] mac = generateMac(derivedKey, cipherText);
-        if (AddressUtil.isEmpty(address)){
-            return "";
+            byte[] mac = generateMac(derivedKey, cipherText);
+            if (AddressUtil.isEmpty(address)){
+                return "";
+            }
+            String hexAddress =address;
+            if(AddressUtil.isAddressValid(address)){
+                hexAddress=  Hex.toHexString(AddressUtil.decodeFromBase58Check(address));
+            }
+            return WalletFile.createGson().toJson(createWalletFile(hexAddress, cipherText, iv, salt, mac, N_STANDARD, P_STANDARD));
+        } finally {
+            // Wipe plaintext and key copies from the heap; bytes may be null.
+            if (bytes != null) {
+                Arrays.fill(bytes, (byte) 0);
+            }
+            Arrays.fill(passwordBytes, (byte) 0);
+            Arrays.fill(derivedKey, (byte) 0);
+            Arrays.fill(encryptKey, (byte) 0);
         }
-        String hexAddress =address;
-        if(AddressUtil.isAddressValid(address)){
-            hexAddress=  Hex.toHexString(AddressUtil.decodeFromBase58Check(address));
-        }
-        return WalletFile.createGson().toJson(createWalletFile(hexAddress, cipherText, iv, salt, mac, N_STANDARD, P_STANDARD));
     }
 
     public static String getPrivateWithKeyStore(String keyStore, String password) throws CipherException, IOException {
