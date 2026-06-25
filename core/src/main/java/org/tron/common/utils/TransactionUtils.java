@@ -491,6 +491,8 @@ public class TransactionUtils {
         try {
             return hashShieldTransaction(tx, tokenId);
         } catch (Exception e) {
+            // Swallow per the method name, but log so the failure is diagnosable.
+            LogUtils.e(e);
         }
         return null;
     }
