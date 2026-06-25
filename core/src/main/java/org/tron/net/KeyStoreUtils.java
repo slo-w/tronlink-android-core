@@ -17,6 +17,7 @@ import org.tron.walletserver.Wallet;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -169,7 +170,8 @@ public class KeyStoreUtils {
         try {
             byte[] derivedMac = generateMac(derivedKey, cipherText);
 
-            if (!Arrays.equals(derivedMac, mac)) {
+            // Constant-time compare to avoid a timing side channel on the password gate.
+            if (!MessageDigest.isEqual(derivedMac, mac)) {
                 throw new CipherException("Invalid password provided");
             }
 
