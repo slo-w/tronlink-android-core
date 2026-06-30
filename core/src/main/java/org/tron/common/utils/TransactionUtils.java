@@ -461,7 +461,7 @@ public class TransactionUtils {
         Transaction.Builder builder = transaction.toBuilder();
         Transaction.raw.Builder rowBuilder = transaction.getRawData()
                 .toBuilder();
-        rowBuilder.setTimestamp(timestamp != 0 ? timestamp : currentTime);
+        if (timestamp != 0) rowBuilder.setTimestamp(currentTime);
         builder.setRawData(rowBuilder.build());
         return builder.build();
     }
