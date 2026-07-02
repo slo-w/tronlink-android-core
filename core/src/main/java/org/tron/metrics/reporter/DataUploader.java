@@ -43,9 +43,13 @@ public class DataUploader {
         }
         this.balanceRepository = balanceRepository;
         this.transactionRepository = transactionCache;
-        this.formatPlain = formatPlain;
+        this.formatPlain = isPlainFormatAllowed(formatPlain, BuildConfig.DEBUG);
         this.okHttpClient = okHttpClient;
         this.baseUrl = baseUrl;
+    }
+
+    static boolean isPlainFormatAllowed(boolean requestedPlain, boolean debugBuild) {
+        return requestedPlain && debugBuild;
     }
 
     public boolean getFormatPlain() {

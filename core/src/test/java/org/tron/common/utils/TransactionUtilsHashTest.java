@@ -35,6 +35,16 @@ public class TransactionUtilsHashTest {
         Assert.assertNotEquals(originalHash, TransactionUtils.getTransactionHash(timestamped));
     }
 
+    @Test
+    public void getBase64FromByteString_returnsEmptyForMalformedSignature() {
+        Assert.assertEquals("", TransactionUtils.getBase64FromByteString(ByteString.copyFrom(new byte[64])));
+    }
+
+    @Test
+    public void getBase64FromByteString_returnsEmptyForNullSignature() {
+        Assert.assertEquals("", TransactionUtils.getBase64FromByteString(null));
+    }
+
     private static Protocol.Transaction createTransferTransaction() {
         byte[] owner = Hex.decode("41a0abd659056697b68feeed0d4bcab3752c01a0f9");
         byte[] to = Hex.decode("41b0abd659056697b68feeed0d4bcab3752c01a0fa");
