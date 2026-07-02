@@ -280,6 +280,9 @@ public class TransactionUtils {
     public static Transaction sign(Transaction transaction, ECKey myKey, byte[] chainId,
                                    boolean isMainChain) {
         if (transaction == null) return null;
+        if (myKey == null) {
+            return null;
+        }
         Transaction.Builder transactionBuilderSigned = transaction.toBuilder();
         byte[] hash = Sha256Hash.hash(transaction.getRawData().toByteArray());
         //TODO Temporary add，3。3。0 changed to throw exception
