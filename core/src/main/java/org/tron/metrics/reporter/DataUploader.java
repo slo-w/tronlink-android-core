@@ -191,6 +191,8 @@ public class DataUploader {
     }
 
     private ReporterHttpApi createStatDataAPI(Config config) {
+        // accepted: [Q-04] Interceptor still reads global getFormatPlain(); metrics-only
+        // Config/format race, no asset path. Scan report 2026-07-14.
         okhttp3.OkHttpClient httpClient = config.okHttpClient.newBuilder()
                 .addInterceptor(new DataFormatInterceptor())
                 .build();

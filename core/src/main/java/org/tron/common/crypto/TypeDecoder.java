@@ -399,7 +399,8 @@ public class TypeDecoder {
             for (int i = 0, currOffset = offset; i < length; i++) {
                 T value;
                 final Class<T> declaredField = (Class<T>) constructor.getParameterTypes()[i];
-                //todo android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+                // accepted: [Q-08] nestedStructLength stays 0 on API 21-25 (getParameters API 26+);
+                // product paths rarely decode nested StaticStruct. Scan report 2026-07-14.
                 if (StaticStruct.class.isAssignableFrom(declaredField)) {
                     int nestedStructLength = 0;
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {

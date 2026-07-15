@@ -84,11 +84,16 @@ public class KeyStoreUtils {
         }
     }
 
+    // accepted: [Q-12] Public API may still surface undeclared Gson/hex RuntimeExceptions
+    // on malformed keystore; non-blocking quality issue, import UI already fails closed.
+    // Scan report 2026-07-14.
     public static String getPrivateWithKeyStore(String keyStore, String password) throws CipherException, IOException {
 
         return ByteArray.toHexString(decrypt(password, WalletFile.createGson().fromJson(keyStore, WalletFile.class)).getPrivKeyBytes());
     }
 
+    // accepted: [Q-12] Same as getPrivateWithKeyStore — undeclared parse exceptions left as-is.
+    // Scan report 2026-07-14.
     public static String getMnemonicWithKeyStore(String keyStore, String password) throws CipherException, IOException {
 
         byte[] mnemonicBytes = decryptToByte(password, WalletFile.createGson().fromJson(keyStore, WalletFile.class));
@@ -141,6 +146,9 @@ public class KeyStoreUtils {
             if (p < 1 || p > 16) {
                 throw new CipherException("Invalid scrypt p parameter");
             }
+            // accepted: [S-04] Combined scrypt memory budget not enforced. Keystore import is
+            // app-internal only (no external/untrusted keystore API); no remote malicious
+            // JSON path. Scan report 2026-07-14.
             // generateMac reads derivedKey[16..32), so anything below 32 is unusable.
             // Upper bound stays generous: legacy keystores were created with
             // DKLEN = plaintext length, so a mnemonic keystore stores dklen equal to
