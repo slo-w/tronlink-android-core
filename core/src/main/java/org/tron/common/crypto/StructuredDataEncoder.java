@@ -315,29 +315,52 @@ public class StructuredDataEncoder {
                 BigInteger bi = new BigInteger((boolean) data ? "1" : "0");
                 hashBytes = Numeric.toBytesPadded(bi, 32);
             } else if (bytesTypePattern.matcher(baseType).find()) {
-                hashBytes = new byte[0];
+                // Enforce the exact bytesN length up front. BytesN constructors reject
+                // wrong lengths, but that failure used to be swallowed below, letting the
+                // element contribute zero bytes to the array concatenation — so
+                // [invalid, X] and [X] hashed identically (S-03).
+                int expectedByteLength = Integer.parseInt(baseType.substring("bytes".length()));
+                byte[] rawValue = Numeric.hexStringToByteArray((String) data);
+                if (rawValue.length != expectedByteLength) {
+                    throw new IllegalArgumentException(
+                            String.format(
+                                    "Type %s requires exactly %d bytes but data has %d",
+                                    baseType, expectedByteLength, rawValue.length));
+                }
 
                 Class<Type> typeClazz = (Class<Type>) AbiTypes.getType(baseType);
                 // Using the Reflection API to get the types of the parameters
                 Constructor[] constructors = typeClazz.getConstructors();
+                byte[] encodedItem = null;
+                Exception lastConstructorFailure = null;
                 for (Constructor constructor : constructors) {
                     // Check which constructor matches
                     try {
                         Class[] parameterTypes = constructor.getParameterTypes();
-                        hashBytes =
+                        encodedItem =
                                 Numeric.hexStringToByteArray(
                                         TypeEncoder.encode(
                                                 typeClazz
                                                         .getDeclaredConstructor(parameterTypes)
-                                                        .newInstance(Numeric.hexStringToByteArray((String) data))));
+                                                        .newInstance(rawValue)));
                         break;
                     } catch (IllegalArgumentException
                             | NoSuchMethodException
                             | InstantiationException
                             | IllegalAccessException
-                            | InvocationTargetException ignored) {
+                            | InvocationTargetException e) {
+                        // Constructor didn't match or rejected the value; try the next one.
+                        lastConstructorFailure = e;
                     }
                 }
+                if (encodedItem == null) {
+                    // Never fall back to an empty encoding: a zero-byte element makes
+                    // distinct arrays concatenate (and hash) to the same value.
+                    throw new IllegalArgumentException(
+                            "Failed to construct " + baseType + " from provided data",
+                            lastConstructorFailure);
+                }
+                hashBytes = encodedItem;
             } else {
                 byte[] b = convertArgToBytes((String) data);
                 BigInteger bi = new BigInteger(1, b);
