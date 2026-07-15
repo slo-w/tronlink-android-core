@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -288,8 +289,8 @@ public class StructuredDataEncoder {
     private byte[] convertToEncodedItem(String baseType, Object data) {
         byte[] hashBytes;
         try {
-            if (baseType.toLowerCase().startsWith("uint")
-                    || baseType.toLowerCase().startsWith("int")) {
+            if (baseType.toLowerCase(Locale.ROOT).startsWith("uint")
+                    || baseType.toLowerCase(Locale.ROOT).startsWith("int")) {
                 BigInteger value = convertToBigInt(data);
                 if (value.signum() >= 0) {
                     hashBytes = Numeric.toBytesPadded(convertToBigInt(data), MAX_BYTE_LENGTH);
