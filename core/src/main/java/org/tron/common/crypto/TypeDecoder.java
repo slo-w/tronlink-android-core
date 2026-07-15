@@ -280,7 +280,15 @@ public class TypeDecoder {
 
     static int decodeUintAsInt(String rawInput, int offset) {
         String input = rawInput.substring(offset, offset + MAX_BYTE_LENGTH_FOR_HEX_STRING);
-        return decode(input, 0, Uint.class).getValue().intValue();
+        BigInteger value = decode(input, 0, Uint.class).getValue();
+        // Length/offset words come from RPC or contract return data an attacker can
+        // control. A raw intValue() truncates the uint256 to negative or wrapped
+        // values that then flow into substring() and ArrayList pre-sizing (S-07).
+        if (value.signum() < 0 || value.bitLength() > 31) {
+            throw new TypeMappingException(
+                    "ABI length/offset word out of int range: " + value);
+        }
+        return value.intValue();
     }
 
     static Bool decodeBool(String rawInput, int offset) {
@@ -317,9 +325,18 @@ public class TypeDecoder {
 
     static DynamicBytes decodeDynamicBytes(String input, int offset) {
         int encodedLength = decodeUintAsInt(input, offset);
-        int hexStringEncodedLength = encodedLength << 1;
 
         int valueOffset = offset + MAX_BYTE_LENGTH_FOR_HEX_STRING;
+
+        // Bound the declared byte length by what the input actually contains before
+        // the << 1 can overflow or the substring/allocation can blow up (S-07).
+        int maxBytes = (input.length() - valueOffset) / 2;
+        if (encodedLength > maxBytes) {
+            throw new TypeMappingException(
+                    "Declared bytes length " + encodedLength
+                            + " exceeds remaining input of " + maxBytes + " bytes");
+        }
+        int hexStringEncodedLength = encodedLength << 1;
 
         String data = input.substring(valueOffset, valueOffset + hexStringEncodedLength);
         byte[] bytes = Numeric.hexStringToByteArray(data);
@@ -470,6 +487,17 @@ public class TypeDecoder {
                 (elements, typeName) -> (T) new DynamicArray(AbiTypes.getType(typeName), elements);
 
         int valueOffset = offset + MAX_BYTE_LENGTH_FOR_HEX_STRING;
+
+        // Every element occupies at least one 32-byte word (static value, struct
+        // word, or dynamic-element offset), so a declared count beyond the words
+        // remaining in the input is malformed. Reject it before decodeArrayElements
+        // pre-sizes an ArrayList to an attacker-chosen capacity (S-07).
+        int maxElements = (input.length() - valueOffset) / MAX_BYTE_LENGTH_FOR_HEX_STRING;
+        if (length > maxElements) {
+            throw new TypeMappingException(
+                    "Declared array length " + length
+                            + " exceeds remaining input of " + maxElements + " words");
+        }
 
         return decodeArrayElements(input, valueOffset, typeReference, length, function);
     }
