@@ -31,6 +31,8 @@ public class DataUploader {
     // SerialDisposable atomically disposes the previous subscription when a new one is set,
     // and is safe to set/replace from any thread.
     private final SerialDisposable disposable = new SerialDisposable();
+    private final Object subscriptionLock = new Object();
+    private long subscriptionGeneration;
 
     private DataUploader() {
     }
@@ -47,7 +49,8 @@ public class DataUploader {
         if (baseUrl == null || (!baseUrl.startsWith("https://") && !BuildConfig.DEBUG)) {
             throw new IllegalArgumentException("baseUrl must use https");
         }
-        configRef.set(new Config(balanceRepository, transactionCache, formatPlain, okHttpClient, baseUrl));
+        boolean effectivePlain = isPlainFormatAllowed(formatPlain, BuildConfig.DEBUG);
+        configRef.set(new Config(balanceRepository, transactionCache, effectivePlain, okHttpClient, baseUrl));
     }
 
     static boolean isPlainFormatAllowed(boolean requestedPlain, boolean debugBuild) {
@@ -60,6 +63,9 @@ public class DataUploader {
     }
 
     public void upload(IUploadResultCallback iUploadResultCallback) {
+        // Capture the lifecycle generation first. Any release() after this point invalidates
+        // this upload, even if it happens before the immutable Config snapshot is read.
+        long generation = captureSubscriptionGeneration();
         // Read a single immutable snapshot so the whole upload runs against one consistent
         // configuration even if init()/release() is called concurrently on another thread.
         Config config = configRef.get();
@@ -86,7 +92,7 @@ public class DataUploader {
                 return;
             }
 
-            executeNetworkRequest(config, prepResult, startTime, iUploadResultCallback);
+            executeNetworkRequest(config, prepResult, startTime, iUploadResultCallback, generation);
         } catch (Exception e) {
             LogUtils.e(TAG, "Data upload flow failed: " + e.getMessage());
             notifyFail(iUploadResultCallback, e);
@@ -98,9 +104,29 @@ public class DataUploader {
      * logout/shutdown so late responses cannot reach a dead context.
      */
     public void release() {
-        // Dispose any in-flight subscription without poisoning the container, so the
-        // singleton can be re-initialized and reused after a logout/shutdown.
-        disposable.set(null);
+        synchronized (subscriptionLock) {
+            // Invalidate uploads that subscribed but have not yet published their Disposable.
+            // A late publisher observes the changed generation and disposes itself.
+            subscriptionGeneration++;
+            disposable.set(null);
+        }
+    }
+
+    long captureSubscriptionGeneration() {
+        synchronized (subscriptionLock) {
+            return subscriptionGeneration;
+        }
+    }
+
+    boolean publishSubscription(Disposable subscription, long generation) {
+        synchronized (subscriptionLock) {
+            if (generation != subscriptionGeneration) {
+                subscription.dispose();
+                return false;
+            }
+            disposable.set(subscription);
+            return true;
+        }
     }
 
     private void notifySkipped(IUploadResultCallback callback, String reason) {
@@ -131,7 +157,7 @@ public class DataUploader {
         }
     }
 
-    private void executeNetworkRequest(Config config, DataPreparationManager.DataPreparationResult prepResult, long startTime, IUploadResultCallback iUploadResultCallback) {
+    private void executeNetworkRequest(Config config, DataPreparationManager.DataPreparationResult prepResult, long startTime, IUploadResultCallback iUploadResultCallback, long generation) {
         try {
             StatDataRequest statRequest = prepResult.getRequest();
 
@@ -174,8 +200,9 @@ public class DataUploader {
                     }
                 }
             }, throwable -> notifyFail(iUploadResultCallback, throwable));
-            // Publish the new subscription; the previously held one (if any) is disposed atomically.
-            disposable.set(subscription);
+            // Publish only if release() has not invalidated this upload while subscribe() was
+            // being created. The check and publication are linearized with release().
+            publishSubscription(subscription, generation);
         } catch (Exception e) {
             LogUtils.e(TAG, "Network request exception: " + e.getMessage());
             notifyFail(iUploadResultCallback, e);

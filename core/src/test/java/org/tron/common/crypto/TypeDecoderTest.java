@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.tron.common.crypto.datatypes.DynamicArray;
 import org.tron.common.crypto.datatypes.DynamicBytes;
+import org.tron.common.crypto.datatypes.generated.StaticArray2;
 import org.tron.common.crypto.datatypes.generated.Uint256;
 
 import java.math.BigInteger;
@@ -87,5 +88,44 @@ public class TypeDecoderTest {
         // Pre-fix, decodeArrayElements pre-sized new ArrayList<>(Integer.MAX_VALUE).
         String input = word("7fffffff") + WORD_ONE;
         TypeDecoder.decodeDynamicArray(input, 0, new TypeReference<DynamicArray<Uint256>>() {});
+    }
+
+    @Test
+    public void decodeTypeReference_dynamicArray_usesRawArrayType() {
+        TypeReference<DynamicArray<Uint256>> reference =
+                new TypeReference<DynamicArray<Uint256>>() { };
+        String input = word("2") + word("1") + word("2");
+
+        DynamicArray<Uint256> decoded = TypeDecoder.decode(input, 0, reference);
+
+        Assert.assertEquals(2, decoded.getValue().size());
+        Assert.assertEquals(BigInteger.ONE, decoded.getValue().get(0).getValue());
+        Assert.assertEquals(BigInteger.valueOf(2), decoded.getValue().get(1).getValue());
+    }
+
+    @Test
+    public void decodeTypeReference_staticArray_usesDeclaredSize() {
+        TypeReference<StaticArray2<Uint256>> reference =
+                new TypeReference<StaticArray2<Uint256>>() { };
+        String input = word("1") + word("2");
+
+        StaticArray2<Uint256> decoded = TypeDecoder.decode(input, 0, reference);
+
+        Assert.assertEquals(2, decoded.getValue().size());
+        Assert.assertEquals(BigInteger.ONE, decoded.getValue().get(0).getValue());
+        Assert.assertEquals(BigInteger.valueOf(2), decoded.getValue().get(1).getValue());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void decodeGeneratedStaticArrayReference_usesReferenceSize() throws Exception {
+        TypeReference<StaticArray2<Uint256>> reference =
+                (TypeReference<StaticArray2<Uint256>>) TypeReference.makeTypeReference("uint256[2]");
+
+        StaticArray2<Uint256> decoded =
+                TypeDecoder.decode(word("1") + word("2"), 0, reference);
+
+        Assert.assertEquals(2, decoded.getValue().size());
+        Assert.assertEquals(BigInteger.valueOf(2), decoded.getValue().get(1).getValue());
     }
 }

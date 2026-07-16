@@ -9,6 +9,7 @@ import org.junit.Test;
 import org.tron.common.crypto.ECKey;
 import org.tron.protos.Protocol;
 import org.tron.protos.contract.BalanceContract;
+import org.tron.protos.contract.SmartContractOuterClass;
 
 public class TransactionUtilsHashTest {
 
@@ -43,6 +44,21 @@ public class TransactionUtilsHashTest {
     @Test
     public void getBase64FromByteString_returnsEmptyForNullSignature() {
         Assert.assertEquals("", TransactionUtils.getBase64FromByteString(null));
+    }
+
+    @Test
+    public void getOwner_supportsUpdateSettingContract() {
+        ByteString owner = ByteString.copyFrom(Hex.decode("41a0abd659056697b68feeed0d4bcab3752c01a0f9"));
+        SmartContractOuterClass.UpdateSettingContract updateSetting =
+                SmartContractOuterClass.UpdateSettingContract.newBuilder()
+                        .setOwnerAddress(owner)
+                        .build();
+        Protocol.Transaction.Contract contract = Protocol.Transaction.Contract.newBuilder()
+                .setType(Protocol.Transaction.Contract.ContractType.UpdateSettingContract)
+                .setParameter(Any.pack(updateSetting))
+                .build();
+
+        Assert.assertArrayEquals(owner.toByteArray(), TransactionUtils.getOwner(contract));
     }
 
     private static Protocol.Transaction createTransferTransaction() {

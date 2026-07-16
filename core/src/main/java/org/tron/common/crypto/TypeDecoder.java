@@ -83,9 +83,15 @@ public class TypeDecoder {
 
     public static <T extends Array> T decode(
             String input, int offset, TypeReference<T> typeReference) {
-        Class cls = ((ParameterizedType) typeReference.getType()).getRawType().getClass();
+        final Class cls;
+        try {
+            cls = typeReference.getClassType();
+        } catch (ClassNotFoundException e) {
+            throw new UnsupportedOperationException("Unable to resolve TypeReference", e);
+        }
         if (StaticArray.class.isAssignableFrom(cls)) {
-            return decodeStaticArray(input, offset, typeReference, 1);
+            return decodeStaticArray(input, offset, typeReference,
+                    getStaticArrayLength(typeReference, cls));
         } else if (DynamicArray.class.isAssignableFrom(cls)) {
             return decodeDynamicArray(input, offset, typeReference);
         } else {
@@ -93,6 +99,25 @@ public class TypeDecoder {
                     "Unsupported TypeReference: "
                             + cls.getName()
                             + ", only Array types can be passed as TypeReferences");
+        }
+    }
+
+    private static int getStaticArrayLength(TypeReference<?> typeReference, Class<?> arrayClass) {
+        if (typeReference instanceof TypeReference.StaticArrayTypeReference) {
+            return ((TypeReference.StaticArrayTypeReference<?>) typeReference).getSize();
+        }
+
+        String simpleName = arrayClass.getSimpleName();
+        String prefix = StaticArray.class.getSimpleName();
+        if (!simpleName.startsWith(prefix) || simpleName.length() == prefix.length()) {
+            throw new UnsupportedOperationException(
+                    "Static array size is missing from TypeReference: " + arrayClass.getName());
+        }
+        try {
+            return Integer.parseInt(simpleName.substring(prefix.length()));
+        } catch (NumberFormatException e) {
+            throw new UnsupportedOperationException(
+                    "Unable to resolve static array size: " + arrayClass.getName(), e);
         }
     }
 

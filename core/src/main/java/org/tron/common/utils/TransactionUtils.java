@@ -226,6 +226,9 @@ public class TransactionUtils {
                 case SetAccountIdContract:
                     owner = unpackContract(contract, AccountContract.SetAccountIdContract.class).getOwnerAddress();
                     break;
+                case UpdateSettingContract:
+                    owner = unpackContract(contract, SmartContractOuterClass.UpdateSettingContract.class).getOwnerAddress();
+                    break;
 
                 default:
                     return null;
@@ -465,6 +468,7 @@ public class TransactionUtils {
     }
 
     public static Transaction setTimestamp(Transaction transaction, long timestamp) {
+        // Timestamp is serialized in raw_data; changing this behavior changes the transaction hash.
         long currentTime = System.currentTimeMillis();//*1000000 + System.nanoTime()%1000000;
         Transaction.Builder builder = transaction.toBuilder();
         Transaction.raw.Builder rowBuilder = transaction.getRawData()
