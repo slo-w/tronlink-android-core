@@ -29,3 +29,30 @@
   import UI already fails closed.
   Location: KeyStoreUtils.getPrivateWithKeyStore / getMnemonicWithKeyStore;
   WalletFile.KdfParamsDeserializer
+
+## Scan report 2026-07-21 (slash)
+
+- Q-11 (SUGGESTION): Hash.sha3(String) treats input as hex (not UTF-8); depends on
+  Numeric.hexStringToByteArray illegal-nibble behavior (S-08). Accepted: public API
+  hex contract retained; sole in-repo caller Keys.getAddress passes hex pubkey;
+  UTF-8 callers must use sha3String; validating/renaming risks regressions.
+  Scan report 2026-07-21.
+  Location: org/tron/common/crypto/Hash.java sha3(String)
+
+- S-04 (LOW): ECKey.getPrivKeyBytes/getPrivateKey allocate a new 32-byte private-key
+  array with no zeroing contract; copies remain on heap until GC. Accepted: exposure
+  is process-memory only; BigInteger/BCECPrivateKey root material is immutable and
+  cannot be wiped; changing accessors or call-site wipe logic risks signing/keystore
+  paths for limited benefit. Scan report 2026-07-21.
+  Location: org/tron/common/crypto/ECKey.java getPrivKeyBytes / getPrivateKey
+
+- Q-03 (MINOR): TypeDecoder.asBigInteger has duplicate Double/Float instanceof and
+  Float→BigInteger via doubleValue loses precision. Accepted: dead duplicate checks;
+  Float is not a normal ABI numeric input; product risk negligible. Scan report
+  2026-07-21.
+  Location: org/tron/common/crypto/TypeDecoder.java asBigInteger
+
+- Q-07 (LOW): ByteArray.toBytesPadded lacks null guard and throws bare RuntimeException
+  on oversized input. Accepted: no in-repo callers (Numeric.toBytesPadded used instead);
+  helper robustness only, no asset/signing path. Scan report 2026-07-21.
+  Location: org/tron/common/utils/ByteArray.java toBytesPadded

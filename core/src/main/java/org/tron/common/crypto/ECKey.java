@@ -1022,6 +1022,10 @@ public class ECKey implements Serializable, SignInterface {
    *
    * @return -
    */
+  // accepted: [S-04] Each call allocates a new 32-byte private-key copy with no caller zeroing
+  // contract; underlying BigInteger/BCECPrivateKey are immutable and cannot be wiped. Process-
+  // memory only (LOW); wiping the copy does not clear root material. Changing accessors/callers
+  // risks signing/keystore paths. Scan report 2026-07-21.
   @Nullable
   public byte[] getPrivKeyBytes() {
     if (privKey == null) {

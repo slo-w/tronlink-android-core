@@ -688,6 +688,9 @@ public class TypeDecoder {
             return Numeric.toBigInt((String) arg);
         } else if (arg instanceof byte[]) {
             return Numeric.toBigInt((byte[]) arg);
+        // accepted: [Q-03] Duplicate Double/Float instanceof is dead paste; Float→BigInteger
+        // via doubleValue is lossy but Float is not a normal ABI numeric input. Leaving as-is
+        // carries no meaningful product risk. Scan report 2026-07-21.
         } else if (arg instanceof Double
                 || arg instanceof Float
                 || arg instanceof Double
