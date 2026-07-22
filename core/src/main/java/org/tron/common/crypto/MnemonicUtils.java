@@ -7,6 +7,7 @@ import org.bouncycastle.crypto.generators.PKCS5S2ParametersGenerator;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.tron.common.bip39.BIP39;
 
+import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
@@ -124,10 +125,17 @@ public class MnemonicUtils {
         }
         passphrase = passphrase == null ? "" : passphrase;
 
-        String salt = String.format("mnemonic%s", passphrase);
-//        String salt = "";
+        // BIP-39 requires password and salt in UTF-8 NFKD (as the Javadoc above already
+        // promised). Without normalization, canonically equivalent mnemonics/passphrases
+        // with different code point sequences derive different seeds (Q-11). NFKD is a
+        // no-op for the ASCII English wordlist and ASCII passphrases, so existing seeds
+        // are unaffected.
+        String normalizedMnemonic = Normalizer.normalize(mnemonic, Normalizer.Form.NFKD);
+        String salt =
+                Normalizer.normalize(
+                        String.format("mnemonic%s", passphrase), Normalizer.Form.NFKD);
         PKCS5S2ParametersGenerator gen = new PKCS5S2ParametersGenerator(new SHA512Digest());
-        gen.init(mnemonic.getBytes(UTF_8), salt.getBytes(UTF_8), SEED_ITERATIONS);
+        gen.init(normalizedMnemonic.getBytes(UTF_8), salt.getBytes(UTF_8), SEED_ITERATIONS);
 
         return ((KeyParameter) gen.generateDerivedParameters(SEED_KEY_SIZE)).getKey();
     }

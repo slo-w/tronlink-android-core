@@ -226,6 +226,9 @@ public class TransactionUtils {
                 case SetAccountIdContract:
                     owner = unpackContract(contract, AccountContract.SetAccountIdContract.class).getOwnerAddress();
                     break;
+                case UpdateSettingContract:
+                    owner = unpackContract(contract, SmartContractOuterClass.UpdateSettingContract.class).getOwnerAddress();
+                    break;
 
                 default:
                     return null;
@@ -238,15 +241,20 @@ public class TransactionUtils {
     }
 
     public static String getBase64FromByteString(ByteString sign) {
-        // Expects a 65-byte signature: r (0..32) | s (32..64) | v (64).
-        byte[] r = sign.substring(0, 32).toByteArray();
-        byte[] s = sign.substring(32, 64).toByteArray();
-        byte v = sign.byteAt(64);
-        if (v < 27) {
-            v += 27; //revId -> v
+        try {
+            // Expects a 65-byte signature: r (0..32) | s (32..64) | v (64).
+            byte[] r = sign.substring(0, 32).toByteArray();
+            byte[] s = sign.substring(32, 64).toByteArray();
+            byte v = sign.byteAt(64);
+            if (v < 27) {
+                v += 27; //revId -> v
+            }
+            ECKey.ECDSASignature signature = ECKey.ECDSASignature.fromComponents(r, s, v);
+            return signature.toBase64();
+        } catch (Exception e) {
+            LogUtils.e(e);
+            return "";
         }
-        ECKey.ECDSASignature signature = ECKey.ECDSASignature.fromComponents(r, s, v);
-        return signature.toBase64();
     }
 
     /**
@@ -280,6 +288,9 @@ public class TransactionUtils {
     public static Transaction sign(Transaction transaction, ECKey myKey, byte[] chainId,
                                    boolean isMainChain) {
         if (transaction == null) return null;
+        if (myKey == null) {
+            return null;
+        }
         Transaction.Builder transactionBuilderSigned = transaction.toBuilder();
         byte[] hash = Sha256Hash.hash(transaction.getRawData().toByteArray());
         //TODO Temporary add，3。3。0 changed to throw exception
@@ -457,11 +468,12 @@ public class TransactionUtils {
     }
 
     public static Transaction setTimestamp(Transaction transaction, long timestamp) {
+        // Timestamp is serialized in raw_data; changing this behavior changes the transaction hash.
         long currentTime = System.currentTimeMillis();//*1000000 + System.nanoTime()%1000000;
         Transaction.Builder builder = transaction.toBuilder();
         Transaction.raw.Builder rowBuilder = transaction.getRawData()
                 .toBuilder();
-        rowBuilder.setTimestamp(timestamp != 0 ? timestamp : currentTime);
+        if (timestamp != 0) rowBuilder.setTimestamp(currentTime);
         builder.setRawData(rowBuilder.build());
         return builder.build();
     }
@@ -491,6 +503,8 @@ public class TransactionUtils {
         try {
             return hashShieldTransaction(tx, tokenId);
         } catch (Exception e) {
+            // Swallow per the method name, but log so the failure is diagnosable.
+            LogUtils.e(e);
         }
         return null;
     }
@@ -537,6 +551,10 @@ public class TransactionUtils {
     public static Transaction addMemo(Transaction transaction, String memo) {
         if (AddressUtil.isEmpty(memo)) return transaction;
         if (transaction == null || transaction.toString().equals("")) return transaction;
+        // Memo is encoded as the raw string bytes, matching java-tron's
+        // Util.setTransactionExtraData visible=true branch (raw.setData(data.getBytes())); it is
+        // read back via Util.getMemo as new String(bytes, UTF-8). The commented hex form below is
+        // java-tron's visible=false branch (ByteArray.fromHexString(data)).
 //        byte[] memoByte = ByteArray.fromHexString(memo);
         byte[] memoByte = ByteArray.fromString(memo);
 
