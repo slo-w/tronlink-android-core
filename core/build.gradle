@@ -7,12 +7,12 @@ plugins {
 group = 'org.tronlink'
 
 android {
-    compileSdk 34
+    compileSdk 36
     namespace = "org.tron"
     defaultConfig {
         minSdk 21
-        versionCode 13
-        versionName "1.0.13"
+        versionCode 14
+        versionName "1.0.14"
         multiDexEnabled true
         consumerProguardFiles "consumer-rules.pro"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
