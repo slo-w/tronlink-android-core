@@ -204,12 +204,13 @@ public class Wallet implements Comparable<Wallet> {
      * @param change       default 0
      * @param accountIndex default 0
      * @return {@code true} if a key was successfully derived; {@code false} when the
-     * mnemonic is empty/null or derivation fails. On failure {@code mECKey} is left
-     * null, so callers must check this result (or {@link #isOpen()}) before continuing
-     * a sensitive flow rather than assuming a key is present.
+     * mnemonic is not a valid BIP-39 sentence (including unknown words or a bad checksum)
+     * or derivation fails. On failure {@code mECKey} is left null, so callers must check
+     * this result (or {@link #isOpen()}) before continuing a sensitive flow rather than
+     * assuming a key is present.
      */
     public boolean generateKeyForMnemonic(String mnemonic, int purpose, int coinType, int account, int change, int accountIndex) {
-        if (mnemonic != null && !mnemonic.isEmpty()) {
+        if (MnemonicUtils.validateMnemonic(mnemonic)) {
             ECKey tempKey = null;
             try {
                 byte[] seed = MnemonicUtils.generateSeed(mnemonic, null);
@@ -225,6 +226,7 @@ public class Wallet implements Comparable<Wallet> {
             return mECKey != null;
         } else {
             mECKey = null;
+            privateKeyBytes33 = null;
             return false;
         }
     }
