@@ -15,6 +15,7 @@ import org.tron.common.utils.Utils;
 import org.tron.config.Parameter;
 
 import java.math.BigInteger;
+import java.security.SecureRandom;
 import java.util.Arrays;
 
 public class Wallet implements Comparable<Wallet> {
@@ -39,6 +40,7 @@ public class Wallet implements Comparable<Wallet> {
     private long createTime;
     private int color = -1;
     private static final String TAG = "Wallet";
+    private static final int MAX_ENTROPY_GENERATION_ATTEMPTS = 2;
     private String mnemonicPath;
 
 
@@ -109,16 +111,50 @@ public class Wallet implements Comparable<Wallet> {
 
     public Wallet(boolean generateECKey) {
         if (generateECKey) {
-            byte[] initialEntropy = new byte[16];
-            Utils.getRandom().nextBytes(initialEntropy);
+            generateWallet(Utils.getRandom());
+        }
+    }
 
-            mnemonic = MnemonicUtils.generateMnemonic(initialEntropy);
-            byte[] seed = MnemonicUtils.generateSeed(mnemonic, null);
+    // Package-private to allow deterministic verification of entropy-source failure handling.
+    Wallet(boolean generateECKey, SecureRandom secureRandom) {
+        if (generateECKey) {
+            generateWallet(secureRandom);
+        }
+    }
+
+    private void generateWallet(SecureRandom secureRandom) {
+        byte[] initialEntropy = new byte[16];
+        byte[] seed = null;
+        try {
+            for (int attempt = 0; attempt < MAX_ENTROPY_GENERATION_ATTEMPTS; attempt++) {
+                secureRandom.nextBytes(initialEntropy);
+                try {
+                    MnemonicUtils.validateGeneratedEntropyQuality(initialEntropy);
+                    mnemonic = MnemonicUtils.generateMnemonic(initialEntropy);
+                    break;
+                } catch (MnemonicUtils.EntropyQualityException ex) {
+                    if (attempt + 1 >= MAX_ENTROPY_GENERATION_ATTEMPTS) {
+                        throw ex;
+                    }
+                    LogUtils.e(TAG, "Degenerate entropy rejected; retrying once");
+                    Arrays.fill(initialEntropy, (byte) 0);
+                }
+            }
+            seed = MnemonicUtils.generateSeed(mnemonic, null);
 
             Bip32ECKeyPair masterKeypair = Bip32ECKeyPair.generateKeyPair(seed);
             Bip32ECKeyPair bip44Keypair = generateBip44KeyPair(masterKeypair);
             privateKeyBytes33 = bip44Keypair.getPrivateKeyBytes33();
             mECKey = ECKey.fromPrivate(privateKeyBytes33);
+        } catch (RuntimeException ex) {
+            // Do not log entropy, mnemonic, seed, or private-key material.
+            LogUtils.e(TAG, "Wallet generation aborted: " + ex.getClass().getSimpleName());
+            throw new IllegalStateException("Failed to generate wallet securely", ex);
+        } finally {
+            Arrays.fill(initialEntropy, (byte) 0);
+            if (seed != null) {
+                Arrays.fill(seed, (byte) 0);
+            }
         }
     }
 
